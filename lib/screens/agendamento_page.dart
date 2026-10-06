@@ -182,11 +182,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               },
             ),
             
-            ElevatedButton(onPressed: () async{
-              await database.adicionarClienteTeste();
-            },
-            child: const Text('teste'),
-            ),
+            
           ],
         ),
       ),
