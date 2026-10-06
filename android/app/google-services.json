@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "614482715962",
+    "project_id": "agenda-bed9b",
+    "storage_bucket": "agenda-bed9b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614482715962:android:e6e2140e24e85f826a1c03",
+        "android_client_info": {
+          "package_name": "com.example.agendamentos_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBir2x-bahhCsbz_3x8rDm4FCyRqwCdMq8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,4 @@
+import 'package:agendamentos_app/firebase/database.dart';
 import 'package:flutter/material.dart';
 
 class NovoAgendamentoScreen extends StatefulWidget {
@@ -8,6 +9,7 @@ class NovoAgendamentoScreen extends StatefulWidget {
 }
 
 class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
+  final database = Database();
   final List<String> clientes = [
     'Maria',
     'João',
@@ -180,6 +182,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               },
             ),
             
+            ElevatedButton(onPressed: () async{
+              await database.adicionarClienteTeste();
+            },
+            child: const Text('teste'),
+            ),
           ],
         ),
       ),
