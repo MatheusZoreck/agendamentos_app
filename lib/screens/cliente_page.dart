@@ -13,6 +13,134 @@ class _ClientePageState extends State<ClientePage> {
   final nomeController = TextEditingController();
   final apelidoController = TextEditingController();
   final telefoneController = TextEditingController();
+
+void abrirEdicao(DocumentSnapshot cliente) {
+  final dados = cliente.data() as Map<String, dynamic>;
+
+  nomeController.text = dados['nome'] ?? '';
+  apelidoController.text = dados['apelido'] ?? '';
+  telefoneController.text = dados['telefone'] ?? '';
+
+  showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) {
+            return Padding(
+              padding: EdgeInsets.only(left: 16,
+               right:  16,
+              top: 16,
+               bottom: MediaQuery.of(context).viewInsets.bottom + 16,),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Editar Cliente',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: nomeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: apelidoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Apelido',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: telefoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Telefone',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          await FirebaseFirestore.instance
+                              .collection('clientes')
+                              .doc(cliente.id)
+                              .update({
+                            'nome': nomeController.text,
+                            'apelido': apelidoController.text,
+                            'telefone': telefoneController.text,
+                          });
+
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Salvar'),
+                      ),
+
+                      const Spacer(),
+
+                      IconButton(
+                        onPressed: () async {
+                          final confirmar = await showDialog<bool>(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Excluir cliente'),
+                                content: const Text(
+                                  'Tem certeza que deseja excluir este cliente?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context, false);
+                                    },
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context, true);
+                                    },
+                                    child: const Text('Excluir'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (confirmar == true) {
+                            await FirebaseFirestore.instance
+                                .collection('clientes')
+                                .doc(cliente.id)
+                                .delete();
+
+                            Navigator.pop(context);
+                          }
+                        },
+                        icon: const Icon(Icons.delete),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,9 +193,9 @@ class _ClientePageState extends State<ClientePage> {
                     '$apelido - $telefone',
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.edit)
-                    , onPressed: () {
-
+                    icon: const Icon(Icons.edit),
+                     onPressed: () {
+                      abrirEdicao(cliente);
                     }
                 ),
                 );
@@ -82,18 +210,21 @@ class _ClientePageState extends State<ClientePage> {
             context: context,
             isScrollControlled: true,
             builder: (context) {
-  return Padding(
-    padding: EdgeInsets.all(16),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          'Novo Cliente',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+              return Padding(
+                padding: EdgeInsets.only(left: 16,
+                 right:  16,
+                 top: 16,
+                 bottom: MediaQuery.of(context).viewInsets.bottom + 16,),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Novo Cliente',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
 
         const SizedBox(height: 20),
 

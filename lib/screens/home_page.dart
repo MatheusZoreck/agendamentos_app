@@ -1,3 +1,4 @@
+import 'package:agendamentos_app/screens/servico_page.dart';
 import 'package:flutter/material.dart';
 import 'agendamento_page.dart';
 import 'cliente_page.dart';
@@ -25,7 +26,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const NovoAgendamentoScreen(),
+                    builder: (context) => const HomeScreen(),
                   ),
                 );
               },
@@ -47,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const NovoAgendamentoScreen(),
+                    builder: (context) => const ServicoPage(),
                   ),
                 );
               },
