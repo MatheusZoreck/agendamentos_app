@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ClientePage extends StatefulWidget {
   const ClientePage({super.key});
@@ -65,8 +66,14 @@ void abrirEdicao(DocumentSnapshot cliente) {
 
                   TextField(
                     controller: telefoneController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      TelefoneInputFormatter(),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Telefone',
+                      hintText: '(41) 99999-9999',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -77,6 +84,41 @@ void abrirEdicao(DocumentSnapshot cliente) {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
+
+                          final telefone = telefoneController.text.replaceAll(
+                RegExp(r'\D'),
+                '',
+              );
+
+                if (telefone.length != 11) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        icon: const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        title: const Text('Telefone inválido'),
+                        content: const Text(
+                          'Informe um celular com DDD e 11 dígitos.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(dialogContext);
+                            },
+                            child: const Text('Entendi'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  return;
+                }
+
                           await FirebaseFirestore.instance
                               .collection('clientes')
                               .doc(cliente.id)
@@ -203,9 +245,12 @@ void abrirEdicao(DocumentSnapshot cliente) {
             );
           },
         ),
-
+      // Botão flutuante para adicionar um novo cliente
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          nomeController.clear();
+          apelidoController.clear();
+          telefoneController.clear();
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
@@ -250,17 +295,57 @@ void abrirEdicao(DocumentSnapshot cliente) {
 
         TextField(
           controller: telefoneController,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            TelefoneInputFormatter(),
+            ],
           decoration: const InputDecoration(
-            labelText: 'Telefone',
-            border: OutlineInputBorder(),
-          ),
-        ),
+          labelText: 'Telefone',
+          hintText: '(41) 99999-9999',
+          border: OutlineInputBorder(),
+             ),
+            ),
 
         const SizedBox(height: 20),
 
         ElevatedButton(
           onPressed: () async {
             // Salvar o cliente no Firestore
+            final telefone = telefoneController.text.replaceAll(
+                RegExp(r'\D'),
+                '',
+              );
+
+                if (telefone.length != 11) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        icon: const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        title: const Text('Telefone inválido'),
+                        content: const Text(
+                          'Informe um celular com DDD e 11 dígitos.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(dialogContext);
+                            },
+                            child: const Text('Entendi'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  return;
+                }
+
             final db = FirebaseFirestore.instance;
            await db.collection('clientes').add({
               'nome': nomeController.text,
@@ -283,3 +368,77 @@ void abrirEdicao(DocumentSnapshot cliente) {
     );
   }
 }
+
+
+class TelefoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String numero = newValue.text.replaceAll(RegExp(r'\D'), '');
+
+    if (numero.length > 11) {
+      numero = numero.substring(0, 11);
+    }
+
+    // Conta quantos números existem antes do cursor.
+    final cursorOriginal =
+        newValue.selection.extentOffset.clamp(0, newValue.text.length);
+
+    final digitosAntesDoCursor = newValue.text
+        .substring(0, cursorOriginal)
+        .replaceAll(RegExp(r'\D'), '')
+        .length;
+
+    String formatado = numero;
+
+    if (numero.isNotEmpty) {
+      if (numero.length <= 2) {
+        formatado = '($numero';
+      } else {
+        final ddd = numero.substring(0, 2);
+        final restante = numero.substring(2);
+
+        formatado = '($ddd) $restante';
+
+        if (numero.length >= 10) {
+          final tamanhoPrefixo = numero.length == 11 ? 5 : 4;
+
+          formatado =
+              '($ddd) '
+              '${restante.substring(0, tamanhoPrefixo)}-'
+              '${restante.substring(tamanhoPrefixo)}';
+        }
+      }
+    }
+
+    // Reposiciona o cursor considerando os dígitos digitados.
+    int novoCursor = 0;
+    int digitosContados = 0;
+
+    while (novoCursor < formatado.length &&
+        digitosContados < digitosAntesDoCursor) {
+      if (RegExp(r'\d').hasMatch(formatado[novoCursor])) {
+        digitosContados++;
+      }
+      novoCursor++;
+    }
+
+    // Se o cursor estiver antes de um separador, avança até uma
+    // posição válida sem perder o número que está sendo editado.
+    if (novoCursor < formatado.length &&
+        digitosContados == digitosAntesDoCursor &&
+        !RegExp(r'\d').hasMatch(formatado[novoCursor])) {
+      novoCursor++;
+    }
+
+    return TextEditingValue(
+      text: formatado,
+      selection: TextSelection.collapsed(
+        offset: novoCursor.clamp(0, formatado.length),
+      ),
+    );
+  }
+}
+

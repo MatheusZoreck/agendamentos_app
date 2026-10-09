@@ -14,6 +14,179 @@ class _ServicoPageState extends State<ServicoPage> {
   final valorController = TextEditingController();
   final tempoController = TextEditingController();
 
+  
+    void abrirEdicao(DocumentSnapshot servico) {
+      final dados = servico.data() as Map<String, dynamic>;
+
+      nomeController.text = dados['nome'] ?? '';
+      valorController.text = (dados['valor'] ?? 0).toString();
+      tempoController.text = (dados['tempoMedio'] ?? 0).toString();
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Editar Serviço',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: nomeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome do serviço',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: valorController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Valor',
+                      prefixText: 'R\$ ',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: tempoController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Tempo médio (minutos)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final valor = double.tryParse(
+                            valorController.text.replaceAll(',', '.'),
+                          );
+                          final tempo = int.tryParse(tempoController.text);
+
+                          if (nomeController.text.trim().isEmpty ||
+                              valor == null ||
+                              valor < 0 ||
+                              tempo == null ||
+                              tempo <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Confira os dados do serviço.'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          await FirebaseFirestore.instance
+                              .collection('servicos')
+                              .doc(servico.id)
+                              .update({
+                            'nome': nomeController.text.trim(),
+                            'valor': valor,
+                            'tempoMedio': tempo,
+                          });
+
+                          nomeController.clear();
+                          valorController.clear();
+                          tempoController.clear();
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text('Salvar alterações'),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    IconButton(
+                      tooltip: 'Excluir serviço',
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () async {
+                        final confirmar = await showDialog<bool>(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Excluir serviço'),
+                              content: const Text(
+                                'Tem certeza que deseja excluir este serviço?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context, false);
+                                  },
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context, true);
+                                  },
+                                  child: const Text('Excluir'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (confirmar == true) {
+                          await FirebaseFirestore.instance
+                              .collection('servicos')
+                              .doc(servico.id)
+                              .delete();
+
+                          nomeController.clear();
+                          valorController.clear();
+                          tempoController.clear();
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                )
+
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,13 +243,14 @@ class _ServicoPageState extends State<ServicoPage> {
                 title: Text(nome),
 
                 subtitle: Text(
-                  'R\$ $valor - $tempoMedio min',
+                  'R\$ ${(valor as num).toStringAsFixed(2).replaceAll('.', ',')}'
+                  ' - $tempoMedio min',
                 ),
 
                 trailing: IconButton(
                   icon: const Icon(Icons.edit),
                   onPressed: () {
-                    
+                    abrirEdicao(servico); 
                   },
                 ),
               );
@@ -84,9 +258,13 @@ class _ServicoPageState extends State<ServicoPage> {
           );
         },
       ),
-
+      // FloatingActionButton to add a new service
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          nomeController.clear();
+          valorController.clear();
+          tempoController.clear();
+          
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
