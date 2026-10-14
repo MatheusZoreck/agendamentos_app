@@ -237,7 +237,7 @@ class _ServicoPageState extends State<ServicoPage> {
 
               return ListTile(
                 leading: const CircleAvatar(
-                  child: Icon(Icons.spa),
+                  child: Icon(Icons.content_cut),
                 ),
 
                 title: Text(nome),

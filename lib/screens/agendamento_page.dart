@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NovoAgendamentoScreen extends StatefulWidget {
-  const NovoAgendamentoScreen({super.key});
+  final String? agendamentoId;
+  const NovoAgendamentoScreen({super.key, this.agendamentoId});
 
   @override
   State<NovoAgendamentoScreen> createState() => _NovoAgendamentoScreenState();
@@ -11,6 +12,7 @@ class NovoAgendamentoScreen extends StatefulWidget {
 
 class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   int etapaAtual = 0;
+  
   
 
   final database = Database();
@@ -21,6 +23,71 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   DateTime? dataSelecionada;
   TimeOfDay? horarioSelecionado;
   bool salvandoAgendamento = false;
+  bool carregandoAgendamento = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.agendamentoId != null) {
+      carregarAgendamento();
+    }
+}
+
+Future<void> carregarAgendamento() async {
+  setState(() {
+    carregandoAgendamento = true;
+  });
+
+  try {
+    final documento = await FirebaseFirestore.instance
+        .collection('agendamentos')
+        .doc(widget.agendamentoId)
+        .get();
+
+    if (!documento.exists || documento.data() == null) {
+      return;
+    }
+
+    final dados = documento.data()!;
+    final dataHora = (dados['data'] as Timestamp).toDate();
+
+    final servicos = dados['servicos'] as List<dynamic>? ?? [];
+
+    if (!mounted) return;
+
+    setState(() {
+      clienteSelecionadoId = dados['clienteId'] as String?;
+
+      servicosSelecionados
+        ..clear()
+        ..addAll(
+          servicos
+              .map((servico) => servico['servicoId']?.toString() ?? '')
+              .where((id) => id.isNotEmpty),
+        );
+
+      dataSelecionada = DateTime(
+        dataHora.year,
+        dataHora.month,
+        dataHora.day,
+      );
+
+      horarioSelecionado = TimeOfDay(
+        hour: dataHora.hour,
+        minute: dataHora.minute,
+      );
+    });
+  } catch (erro) {
+    debugPrint('Erro ao carregar agendamento: $erro');
+  } finally {
+    if (mounted) {
+      setState(() {
+        carregandoAgendamento = false;
+      });
+    }
+  }
+}
 
   
 Widget etapaSelecionarCliente() {
@@ -306,7 +373,7 @@ Widget etapaConfirmarAgendamento() {
               const Divider(),
 
               ListTile(
-                leading: const Icon(Icons.person),
+                leading: const Icon(Icons.face_2),
                 title: const Text('Cliente'),
                 subtitle: Text(
                   (cliente['apelido'] ?? '').toString().isNotEmpty
@@ -316,7 +383,7 @@ Widget etapaConfirmarAgendamento() {
               ),
 
               const ListTile(
-                leading: Icon(Icons.spa),
+                leading: Icon(Icons.cut),
                 title: Text('Serviços selecionados'),
               ),
 
@@ -347,6 +414,7 @@ Widget etapaConfirmarAgendamento() {
                 trailing: Text(
                   'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
                   style: const TextStyle(
+                    color: Colors.green,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -440,23 +508,42 @@ Future<void> salvarAgendamento() async {
     );
 
     // Grava o agendamento no Firestore.
-    await FirebaseFirestore.instance
-        .collection('agendamentos')
-        .add({
-      'clienteId': clienteSelecionadoId,
-      'clienteNome': cliente['nome'] ?? '',
-      'servicos': listaServicos,
-      'valorTotal': valorTotal,
-      'tempoTotal': tempoTotal,
-      'data': Timestamp.fromDate(dataHora),
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
+    
+// Referência à coleção de agendamentos.
+final colecao = FirebaseFirestore.instance.collection('agendamentos');
+
+// Dados que podem ser alterados na edição.
+final dadosAgendamento = {
+  'clienteId': clienteSelecionadoId,
+  'clienteNome': cliente['nome'] ?? '',
+  'servicos': listaServicos,
+  'valorTotal': valorTotal,
+  'tempoTotal': tempoTotal,
+  'data': Timestamp.fromDate(dataHora),
+};
+
+if (widget.agendamentoId == null) {
+  // Cadastro: cria um novo documento.
+  await colecao.add({
+    ...dadosAgendamento,
+    'criadoEm': FieldValue.serverTimestamp(),
+    'status': 'agendado',
+  });
+} else {
+  // Edição: atualiza o documento existente.
+  await colecao.doc(widget.agendamentoId).update(dadosAgendamento);
+}
+
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Agendamento salvo com sucesso!'),
+       SnackBar(
+       content: Text(
+         widget.agendamentoId == null
+      ? 'Agendamento salvo com sucesso!'
+      : 'Agendamento atualizado com sucesso!',
+),
       ),
     );
     await Future.delayed(const Duration(milliseconds: 500));
@@ -529,9 +616,20 @@ void voltarEtapa() {
 
   @override
   Widget build(BuildContext context) {
+    if (carregandoAgendamento) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Novo Agendamento'),
+     appBar: AppBar(
+        title: Text(
+          widget.agendamentoId == null
+              ? 'Novo Agendamento'
+              : 'Editar Agendamento',
+        ),
       ),
 
       body: Padding(

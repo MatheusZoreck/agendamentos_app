@@ -228,7 +228,7 @@ void abrirEdicao(DocumentSnapshot cliente) {
 
                 return ListTile(
                   leading: const CircleAvatar(
-                    child: Icon(Icons.person),
+                    child: Icon(Icons.face_2),
                   ),
                   title: Text(nome),
                   subtitle: Text(
