@@ -4,6 +4,7 @@ import 'agendamento_page.dart';
 import 'cliente_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'historico_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,60 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String filtroAgendamentos = 'Hoje';
   Timer? _timerVerificacao;
+
+  Future<void> excluirAgendamento(
+  String documentoId,
+) async {
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Excluir agendamento'),
+      content: const Text(
+        'Tem certeza de que deseja excluir este agendamento? '
+        'Essa ação não poderá ser desfeita.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Voltar'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Excluir'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmar != true) return;
+
+  try {
+    await FirebaseFirestore.instance
+        .collection('agendamentos')
+        .doc(documentoId)
+        .delete();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Agendamento excluído com sucesso!'),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Erro ao excluir agendamento: $e'),
+      ),
+    );
+  }
+}
 
   Future<void> cancelarAgendamento(
   String documentoId,
@@ -78,33 +133,43 @@ void initState() {
     super.dispose();
   }
 
+
 Future<void> verificarAgendamentos() async {
-  final snapshot = await FirebaseFirestore.instance
-      .collection('agendamentos')
-      .get();
+  final agora = DateTime.now();
 
-  for (final documento in snapshot.docs) {
-    final dados = documento.data();
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('agendamentos')
+        .where('status', isEqualTo: 'agendado')
+        .where(
+          'data',
+          isLessThanOrEqualTo: Timestamp.fromDate(agora),
+        )
+        .get();
 
-    final status = dados['status'] ?? 'agendado';
+    for (final documento in snapshot.docs) {
+      final dados = documento.data();
 
-    final dataHora = (dados['data'] as Timestamp).toDate();
+      final dataHora = (dados['data'] as Timestamp).toDate();
 
-    final tempoTotal = (dados['tempoTotal'] as num?)?.toInt() ?? 0;
+      final tempoTotal =
+          (dados['tempoTotal'] as num?)?.toInt() ?? 0;
 
-    final dataHoraFinal = dataHora.add(
-      Duration(minutes: tempoTotal),
-    );
+      final dataHoraFinal = dataHora.add(
+        Duration(minutes: tempoTotal),
+      );
 
-    final agora = DateTime.now();
-
-    if (status == 'agendado' && agora.isAfter(dataHoraFinal)) {
-      await documento.reference.update({
-        'status': 'concluído',
-      });
+      if (agora.isAfter(dataHoraFinal)) {
+        await documento.reference.update({
+          'status': 'concluído',
+        });
+      }
     }
+  } catch (e) {
+    debugPrint('Erro ao verificar agendamentos: $e');
   }
 }
+
   
 Widget _listaAgendamentos() {
   final agora = DateTime.now();
@@ -293,7 +358,11 @@ Widget _listaAgendamentos() {
                     } else if (opcao == 'cancelar') {
                       cancelarAgendamento(documentoId, status.toString());
                     }
+                    else if (opcao == 'excluir') {
+                      excluirAgendamento(documentoId);
+                    }
                   },
+                  
 
                   itemBuilder: (context) => [
                     if (status != 'cancelado')
@@ -311,6 +380,11 @@ Widget _listaAgendamentos() {
                         value: 'cancelar',
                         child: Text('Cancelar'),
                       ),
+                    const PopupMenuItem<String>(
+                      value: 'excluir',
+                      child: Text('Excluir',
+                      style: TextStyle(color: Colors.red),),
+                    ),
                   ],
                 ),
               ],
@@ -370,6 +444,17 @@ Widget _listaAgendamentos() {
                 );
               },
             ),
+            ListTile(
+              title: const Text('Histórico'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HistoricoPage(),
+                  ),
+                );
+              },
+            )
           ],
         ),
       ),
