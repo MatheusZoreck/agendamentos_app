@@ -400,64 +400,112 @@ Widget _listaAgendamentos() {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Agendamentos'),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              child: Text('Menu'),
-            ),
-            ListTile(
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HomeScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              title: const Text('clientes'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ClientePage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              title: const Text('serviços'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ServicoPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              title: const Text('Histórico'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HistoricoPage(),
-                  ),
-                );
-              },
-            )
-          ],
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Agendamentos',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
         ),
       ),
+    ),
+
+    drawer: Drawer(
+      backgroundColor: const Color(0xFFFFFCF8),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color(0xFFD7B9A9),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: const [
+                Icon(
+                  Icons.spa_outlined,
+                  size: 36,
+                  color: Color(0xFF6F554B),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Agendamentos',
+                  style: TextStyle(
+                    color: Color(0xFF6F554B),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Menu principal',
+                  style: TextStyle(
+                    color: Color(0xFF6F554B),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.home_outlined),
+            title: const Text('Home'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HomeScreen(),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.people_outline),
+            title: const Text('Clientes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ClientePage(),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.spa_outlined),
+            title: const Text('Serviços'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ServicoPage(),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Histórico'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HistoricoPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    ),
 
       body: Column(
           children: [
@@ -484,17 +532,6 @@ Widget _listaAgendamentos() {
                         });
                       },
                       child: const Text('Próximos'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          filtroAgendamentos = 'Histórico';
-                        });
-                      },
-                      child: const Text('Histórico'),
                     ),
                   ),
                 ],

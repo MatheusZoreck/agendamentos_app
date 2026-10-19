@@ -446,6 +446,84 @@ Widget etapaConfirmarAgendamento() {
   );
 }
 
+Future<bool> verificarConflito(
+  DateTime novaData,
+  int novoTempo,
+) async {
+  final novaDataFinal = novaData.add(
+    Duration(minutes: novoTempo),
+  );
+
+  final snapshot = await FirebaseFirestore.instance
+      .collection('agendamentos')
+      .where(
+        'status',
+        isEqualTo: 'agendado',
+      )
+      .get();
+
+  for (final documento in snapshot.docs) {
+    // Na edição, ignora o próprio agendamento.
+    if (documento.id == widget.agendamentoId) {
+      continue;
+    }
+
+    final dados = documento.data();
+
+    final inicioExistente =
+        (dados['data'] as Timestamp).toDate();
+
+    final tempoExistente =
+        (dados['tempoTotal'] as num?)?.toInt() ?? 0;
+
+    final fimExistente = inicioExistente.add(
+      Duration(minutes: tempoExistente),
+    );
+
+    // Verifica se os intervalos se sobrepõem.
+    final existeConflito =
+        novaData.isBefore(fimExistente) &&
+        novaDataFinal.isAfter(inicioExistente);
+
+    if (existeConflito) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Future<bool> confirmarConflito() async {
+  final resultado = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Atenção: conflito de horário'),
+        content: const Text(
+          'Já existe um atendimento nesse intervalo. '
+          'Deseja continuar mesmo assim?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false);
+            },
+            child: const Text('Escolher outro horário'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('Continuar mesmo assim'),
+          ),
+        ],
+      );
+    },
+  );
+
+  return resultado ?? false;
+}
 
 Future<void> salvarAgendamento() async {
   if (salvandoAgendamento) return;
@@ -460,6 +538,8 @@ Future<void> salvarAgendamento() async {
         .doc(clienteSelecionadoId)
         .get();
 
+    
+
     if (!clienteDoc.exists || clienteDoc.data() == null) {
       throw Exception('Cliente não encontrado.');
     }
@@ -470,6 +550,8 @@ Future<void> salvarAgendamento() async {
     final servicosSnapshot = await FirebaseFirestore.instance
         .collection('servicos')
         .get();
+
+    
 
     final documentosSelecionados = servicosSnapshot.docs
         .where((doc) => servicosSelecionados.contains(doc.id))
@@ -506,6 +588,19 @@ Future<void> salvarAgendamento() async {
       horarioSelecionado!.hour,
       horarioSelecionado!.minute,
     );
+    
+    final temConflito = await verificarConflito(
+  dataHora,
+  tempoTotal,
+    );
+
+    if (temConflito) {
+      if (!mounted) return;
+
+      final continuar = await confirmarConflito();
+
+      if (!continuar) return;
+    }
 
     // Grava o agendamento no Firestore.
     

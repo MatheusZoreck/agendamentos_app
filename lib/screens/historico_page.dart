@@ -127,8 +127,57 @@ Widget listarAgendamentos() {
           child: Text('Nenhum atendimento no histórico.'),
         );
       }
-
-      return ListView.builder(
+      return Column(
+  children: [
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Atendimentos'),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$quantidadeAtendimentos',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Valor total'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+    Expanded(
+      child: ListView.builder(
         padding: const EdgeInsets.all(12),
         itemCount: documentos.length,
         itemBuilder: (context, index) {
@@ -178,7 +227,9 @@ Widget listarAgendamentos() {
             ),
           );
         },
-      );
+      ),
+    ),
+  ],);
     },
   );
 }
