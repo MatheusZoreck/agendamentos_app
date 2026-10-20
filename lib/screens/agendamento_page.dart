@@ -1,4 +1,3 @@
-import 'package:agendamentos_app/firebase/database.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -12,18 +11,13 @@ class NovoAgendamentoScreen extends StatefulWidget {
 
 class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   int etapaAtual = 0;
-  
-  
-
-  final database = Database();
- 
 
   final Set<String> servicosSelecionados = {};
   String? clienteSelecionadoId;
   DateTime? dataSelecionada;
   TimeOfDay? horarioSelecionado;
   bool salvandoAgendamento = false;
-  bool carregandoAgendamento = false;
+  late bool carregandoAgendamento = widget.agendamentoId != null;
 
   @override
   void initState() {
@@ -32,185 +26,197 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
     if (widget.agendamentoId != null) {
       carregarAgendamento();
     }
-}
+  }
 
-Future<void> carregarAgendamento() async {
-  setState(() {
-    carregandoAgendamento = true;
-  });
+  Future<void> carregarAgendamento() async {
+    try {
+      final documento = await FirebaseFirestore.instance
+          .collection('agendamentos')
+          .doc(widget.agendamentoId)
+          .get();
 
-  try {
-    final documento = await FirebaseFirestore.instance
-        .collection('agendamentos')
-        .doc(widget.agendamentoId)
-        .get();
+      if (!documento.exists || documento.data() == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Agendamento não encontrado.'),
+          ),
+        );
+        Navigator.of(context).pop();
+        return;
+      }
 
-    if (!documento.exists || documento.data() == null) {
-      return;
-    }
+      final dados = documento.data()!;
+      final timestamp = dados['data'] as Timestamp?;
+      if (timestamp == null) {
+        throw Exception('Data do agendamento inválida.');
+      }
+      final dataHora = timestamp.toDate();
 
-    final dados = documento.data()!;
-    final dataHora = (dados['data'] as Timestamp).toDate();
+      final servicos = dados['servicos'] as List<dynamic>? ?? [];
 
-    final servicos = dados['servicos'] as List<dynamic>? ?? [];
+      if (!mounted) return;
 
-    if (!mounted) return;
+      setState(() {
+        clienteSelecionadoId = dados['clienteId'] as String?;
 
-    setState(() {
-      clienteSelecionadoId = dados['clienteId'] as String?;
+        servicosSelecionados
+          ..clear()
+          ..addAll(
+            servicos
+                .map((servico) => servico['servicoId']?.toString() ?? '')
+                .where((id) => id.isNotEmpty),
+          );
 
-      servicosSelecionados
-        ..clear()
-        ..addAll(
-          servicos
-              .map((servico) => servico['servicoId']?.toString() ?? '')
-              .where((id) => id.isNotEmpty),
+        dataSelecionada = DateTime(
+          dataHora.year,
+          dataHora.month,
+          dataHora.day,
         );
 
-      dataSelecionada = DateTime(
-        dataHora.year,
-        dataHora.month,
-        dataHora.day,
-      );
-
-      horarioSelecionado = TimeOfDay(
-        hour: dataHora.hour,
-        minute: dataHora.minute,
-      );
-    });
-  } catch (erro) {
-    debugPrint('Erro ao carregar agendamento: $erro');
-  } finally {
-    if (mounted) {
-      setState(() {
-        carregandoAgendamento = false;
+        horarioSelecionado = TimeOfDay(
+          hour: dataHora.hour,
+          minute: dataHora.minute,
+        );
       });
+    } catch (erro) {
+      debugPrint('Erro ao carregar agendamento: $erro');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao carregar agendamento: $erro'),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          carregandoAgendamento = false;
+        });
+      }
     }
   }
-}
 
-  
-Widget etapaSelecionarCliente() {
-  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-        .collection('clientes')
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      if (snapshot.hasError) {
-        return const Center(
-          child: Text('Erro ao carregar clientes.'),
-        );
-      }
-
-      final clientes = snapshot.data?.docs ?? [];
-
-      if (clientes.isEmpty) {
-        return const Center(
-          child: Text('Nenhum cliente cadastrado.'),
-        );
-      }
-
-      return RadioGroup<String>(
-        groupValue: clienteSelecionadoId,
-        onChanged: (id) {
-          setState(() {
-            clienteSelecionadoId = id;
-          });
-        },
-        child: ListView.builder(
-          itemCount: clientes.length,
-          itemBuilder: (context, index) {
-            final cliente = clientes[index];
-            final dados = cliente.data();
-
-            final nome = dados['nome'] ?? '';
-            final apelido = dados['apelido'] ?? '';
-            final telefone = dados['telefone'] ?? '';
-
-            return RadioListTile<String>(
-              value: cliente.id,
-              title: Text(
-                apelido.toString().isNotEmpty
-                    ? '$nome ($apelido)'
-                    : nome.toString(),
-              ),
-              subtitle: Text(telefone.toString()),
-            );
-          },
-        ),
-      );
-    },
-  );
-}
-
-
-Widget etapaSelecionarServicos() {
-  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-        .collection('servicos')
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      if (snapshot.hasError) {
-        return const Center(
-          child: Text('Erro ao carregar os serviços.'),
-        );
-      }
-
-      final documentos = snapshot.data?.docs ?? [];
-
-      if (documentos.isEmpty) {
-        return const Center(
-          child: Text('Nenhum serviço cadastrado.'),
-        );
-      }
-
-      return ListView(
-        children: documentos.map((documento) {
-          final dados = documento.data();
-          final nome = dados['nome'] ?? 'Serviço sem nome';
-          final valor = (dados['valor'] as num?)?.toDouble() ?? 0;
-          final tempo = dados['tempoMedio'] ?? 0;
-
-          return CheckboxListTile(
-            value: servicosSelecionados.contains(documento.id),
-            title: Text(nome.toString()),
-            subtitle: Text(
-              'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}'
-              ' • $tempo min',
-            ),
-            onChanged: (marcado) {
-              setState(() {
-                if (marcado == true) {
-                  servicosSelecionados.add(documento.id);
-                } else {
-                  servicosSelecionados.remove(documento.id);
-                }
-              });
-            },
+  Widget etapaSelecionarCliente() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('clientes')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
           );
-        }).toList(),
-      );
-    },
-  );
-}
+        }
 
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text('Erro ao carregar clientes.'),
+          );
+        }
+
+        final clientes = snapshot.data?.docs ?? [];
+
+        if (clientes.isEmpty) {
+          return const Center(
+            child: Text('Nenhum cliente cadastrado.'),
+          );
+        }
+
+        return RadioGroup<String>(
+          groupValue: clienteSelecionadoId,
+          onChanged: (id) {
+            setState(() {
+              clienteSelecionadoId = id;
+            });
+          },
+          child: ListView.builder(
+            itemCount: clientes.length,
+            itemBuilder: (context, index) {
+              final cliente = clientes[index];
+              final dados = cliente.data();
+
+              final nome = dados['nome'] ?? '';
+              final apelido = dados['apelido'] ?? '';
+              final telefone = dados['telefone'] ?? '';
+
+              return RadioListTile<String>(
+                value: cliente.id,
+                title: Text(
+                  apelido.toString().isNotEmpty
+                      ? '$nome ($apelido)'
+                      : nome.toString(),
+                ),
+                subtitle: Text(telefone.toString()),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget etapaSelecionarServicos() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('servicos')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text('Erro ao carregar os serviços.'),
+          );
+        }
+
+        final documentos = snapshot.data?.docs ?? [];
+
+        if (documentos.isEmpty) {
+          return const Center(
+            child: Text('Nenhum serviço cadastrado.'),
+          );
+        }
+
+        return ListView(
+          children: documentos.map((documento) {
+            final dados = documento.data();
+            final nome = dados['nome'] ?? 'Serviço sem nome';
+            final valor = (dados['valor'] as num?)?.toDouble() ?? 0;
+            final tempo = dados['tempoMedio'] ?? 0;
+
+            return CheckboxListTile(
+              value: servicosSelecionados.contains(documento.id),
+              title: Text(nome.toString()),
+              subtitle: Text(
+                'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}'
+                ' • $tempo min',
+              ),
+              onChanged: (marcado) {
+                setState(() {
+                  if (marcado == true) {
+                    servicosSelecionados.add(documento.id);
+                  } else {
+                    servicosSelecionados.remove(documento.id);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
 
   Future<void> selecionarHorario() async {
     final TimeOfDay? horario = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: horarioSelecionado ?? TimeOfDay.now(),
     );
 
     if (horario != null) {
@@ -220,11 +226,10 @@ Widget etapaSelecionarServicos() {
     }
   }
 
-  Future<void> selecionarData() async{
-
+  Future<void> selecionarData() async {
     final DateTime? data = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: dataSelecionada ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
@@ -236,434 +241,443 @@ Widget etapaSelecionarServicos() {
     }
   }
 
-Widget etapaSelecionarDataHorario() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const Text(
-        'Escolha a data do agendamento:',
-        style: TextStyle(fontSize: 16),
-      ),
-
-      const SizedBox(height: 12),
-
-      OutlinedButton.icon(
-        onPressed: selecionarData,
-        icon: const Icon(Icons.calendar_month),
-        label: Text(
-          dataSelecionada == null
-              ? 'Selecionar data'
-              : '${dataSelecionada!.day.toString().padLeft(2, '0')}/'
-                '${dataSelecionada!.month.toString().padLeft(2, '0')}/'
-                '${dataSelecionada!.year}',
+  Widget etapaSelecionarDataHorario() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Escolha a data do agendamento:',
+          style: TextStyle(fontSize: 16),
         ),
-      ),
-
-      const SizedBox(height: 24),
-
-      const Text(
-        'Escolha o horário:',
-        style: TextStyle(fontSize: 16),
-      ),
-
-      const SizedBox(height: 12),
-
-      OutlinedButton.icon(
-        onPressed: selecionarHorario,
-        icon: const Icon(Icons.access_time),
-        label: Text(
-          horarioSelecionado == null
-              ? 'Selecionar horário'
-              : horarioSelecionado!.format(context),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: selecionarData,
+          icon: const Icon(Icons.calendar_month),
+          label: Text(
+            dataSelecionada == null
+                ? 'Selecionar data'
+                : '${dataSelecionada!.day.toString().padLeft(2, '0')}/'
+                  '${dataSelecionada!.month.toString().padLeft(2, '0')}/'
+                  '${dataSelecionada!.year}',
+          ),
         ),
-      ),
-    ],
-  );
-}
-
-
-Widget etapaConfirmarAgendamento() {
-  return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-        .collection('clientes')
-        .doc(clienteSelecionadoId)
-        .snapshots(),
-    builder: (context, clienteSnapshot) {
-      if (clienteSnapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-
-      if (clienteSnapshot.hasError) {
-        return const Center(
-          child: Text('Erro ao carregar os dados do cliente.'),
-        );
-      }
-
-      final cliente = clienteSnapshot.data?.data();
-
-      if (cliente == null) {
-        return const Center(
-          child: Text('Cliente não encontrado.'),
-        );
-      }
-
-      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('servicos')
-            .snapshots(),
-        builder: (context, servicosSnapshot) {
-          if (servicosSnapshot.connectionState ==
-              ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (servicosSnapshot.hasError) {
-            return const Center(
-              child: Text('Erro ao carregar os serviços.'),
-            );
-          }
-
-          final documentos = servicosSnapshot.data?.docs ?? [];
-
-          final selecionados = documentos
-              .where((doc) => servicosSelecionados.contains(doc.id))
-              .toList();
-
-          if (selecionados.length != servicosSelecionados.length) {
-            return const Center(
-              child: Text(
-                'Um ou mais serviços selecionados não foram encontrados.',
-              ),
-            );
-          }
-
-          double valorTotal = 0;
-          int tempoTotal = 0;
-
-          for (final documento in selecionados) {
-            final dados = documento.data();
-
-            valorTotal +=
-                (dados['valor'] as num?)?.toDouble() ?? 0;
-
-            tempoTotal +=
-                (dados['tempoMedio'] as num?)?.toInt() ?? 0;
-          }
-
-          final data = dataSelecionada!;
-          final horario = horarioSelecionado!;
-
-          final dataFormatada =
-              '${data.day.toString().padLeft(2, '0')}/'
-              '${data.month.toString().padLeft(2, '0')}/'
-              '${data.year}';
-
-          return ListView(
-            children: [
-              const Text(
-                'Confira os dados do agendamento',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const Divider(),
-
-              ListTile(
-                leading: const Icon(Icons.face_2),
-                title: const Text('Cliente'),
-                subtitle: Text(
-                  (cliente['apelido'] ?? '').toString().isNotEmpty
-                      ? '${cliente['nome']} (${cliente['apelido']})'
-                      : (cliente['nome'] ?? 'Sem nome').toString(),
-                ),
-              ),
-
-              const ListTile(
-                leading: Icon(Icons.cut),
-                title: Text('Serviços selecionados'),
-              ),
-
-              ...selecionados.map((documento) {
-                final dados = documento.data();
-                final nome =
-                    (dados['nome'] ?? 'Serviço').toString();
-                final valor =
-                    (dados['valor'] as num?)?.toDouble() ?? 0;
-                final tempo =
-                    (dados['tempoMedio'] as num?)?.toInt() ?? 0;
-
-                return ListTile(
-                  dense: true,
-                  title: Text(nome),
-                  subtitle: Text('$tempo minutos'),
-                  trailing: Text(
-                    'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
-                  ),
-                );
-              }),
-
-              const Divider(),
-
-              ListTile(
-                leading: const Icon(Icons.payments),
-                title: const Text('Valor total'),
-                trailing: Text(
-                  'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                  style: const TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-
-              ListTile(
-                leading: const Icon(Icons.timelapse),
-                title: const Text('Tempo estimado'),
-                trailing: Text('$tempoTotal minutos'),
-              ),
-
-              ListTile(
-                leading: const Icon(Icons.calendar_month),
-                title: const Text('Data'),
-                trailing: Text(dataFormatada),
-              ),
-
-              ListTile(
-                leading: const Icon(Icons.access_time),
-                title: const Text('Horário'),
-                trailing: Text(horario.format(context)),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-Future<bool> verificarConflito(
-  DateTime novaData,
-  int novoTempo,
-) async {
-  final novaDataFinal = novaData.add(
-    Duration(minutes: novoTempo),
-  );
-
-  final snapshot = await FirebaseFirestore.instance
-      .collection('agendamentos')
-      .where(
-        'status',
-        isEqualTo: 'agendado',
-      )
-      .get();
-
-  for (final documento in snapshot.docs) {
-    // Na edição, ignora o próprio agendamento.
-    if (documento.id == widget.agendamentoId) {
-      continue;
-    }
-
-    final dados = documento.data();
-
-    final inicioExistente =
-        (dados['data'] as Timestamp).toDate();
-
-    final tempoExistente =
-        (dados['tempoTotal'] as num?)?.toInt() ?? 0;
-
-    final fimExistente = inicioExistente.add(
-      Duration(minutes: tempoExistente),
+        const SizedBox(height: 24),
+        const Text(
+          'Escolha o horário:',
+          style: TextStyle(fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: selecionarHorario,
+          icon: const Icon(Icons.access_time),
+          label: Text(
+            horarioSelecionado == null
+                ? 'Selecionar horário'
+                : horarioSelecionado!.format(context),
+          ),
+        ),
+      ],
     );
-
-    // Verifica se os intervalos se sobrepõem.
-    final existeConflito =
-        novaData.isBefore(fimExistente) &&
-        novaDataFinal.isAfter(inicioExistente);
-
-    if (existeConflito) {
-      return true;
-    }
   }
 
-  return false;
-}
+  Widget etapaConfirmarAgendamento() {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('clientes')
+          .doc(clienteSelecionadoId)
+          .snapshots(),
+      builder: (context, clienteSnapshot) {
+        if (clienteSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-Future<bool> confirmarConflito() async {
-  final resultado = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Atenção: conflito de horário'),
-        content: const Text(
-          'Já existe um atendimento nesse intervalo. '
-          'Deseja continuar mesmo assim?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
-            child: const Text('Escolher outro horário'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('Continuar mesmo assim'),
-          ),
-        ],
+        if (clienteSnapshot.hasError) {
+          return const Center(
+            child: Text('Erro ao carregar os dados do cliente.'),
+          );
+        }
+
+        final cliente = clienteSnapshot.data?.data();
+
+        if (cliente == null) {
+          return const Center(
+            child: Text('Cliente não encontrado.'),
+          );
+        }
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('servicos')
+              .snapshots(),
+          builder: (context, servicosSnapshot) {
+            if (servicosSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            if (servicosSnapshot.hasError) {
+              return const Center(
+                child: Text('Erro ao carregar os serviços.'),
+              );
+            }
+
+            final documentos = servicosSnapshot.data?.docs ?? [];
+
+            final selecionados = documentos
+                .where((doc) => servicosSelecionados.contains(doc.id))
+                .toList();
+
+            if (selecionados.length != servicosSelecionados.length) {
+              return const Center(
+                child: Text(
+                  'Um ou mais serviços selecionados não foram encontrados.',
+                ),
+              );
+            }
+
+            double valorTotal = 0;
+            int tempoTotal = 0;
+
+            for (final documento in selecionados) {
+              final dados = documento.data();
+
+              valorTotal +=
+                  (dados['valor'] as num?)?.toDouble() ?? 0;
+
+              tempoTotal +=
+                  (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+            }
+
+            final data = dataSelecionada;
+            final horario = horarioSelecionado;
+
+            if (data == null || horario == null) {
+              return const Center(
+                child: Text('Data ou horário não definidos.'),
+              );
+            }
+
+            final dataFormatada =
+                '${data.day.toString().padLeft(2, '0')}/'
+                '${data.month.toString().padLeft(2, '0')}/'
+                '${data.year}';
+
+            return ListView(
+              children: [
+                const Text(
+                  'Confira os dados do agendamento',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.face_2),
+                  title: const Text('Cliente'),
+                  subtitle: Text(
+                    (cliente['apelido'] ?? '').toString().isNotEmpty
+                        ? '${cliente['nome']} (${cliente['apelido']})'
+                        : (cliente['nome'] ?? 'Sem nome').toString(),
+                  ),
+                ),
+                const ListTile(
+                  leading: Icon(Icons.cut),
+                  title: Text('Serviços selecionados'),
+                ),
+                ...selecionados.map((documento) {
+                  final dados = documento.data();
+                  final nome =
+                      (dados['nome'] ?? 'Serviço').toString();
+                  final valor =
+                      (dados['valor'] as num?)?.toDouble() ?? 0;
+                  final tempo =
+                      (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+
+                  return ListTile(
+                    dense: true,
+                    title: Text(nome),
+                    subtitle: Text('$tempo minutos'),
+                    trailing: Text(
+                      'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                    ),
+                  );
+                }),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.payments),
+                  title: const Text('Valor total'),
+                  trailing: Text(
+                    'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.timelapse),
+                  title: const Text('Tempo estimado'),
+                  trailing: Text('$tempoTotal minutos'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.calendar_month),
+                  title: const Text('Data'),
+                  trailing: Text(dataFormatada),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: const Text('Horário'),
+                  trailing: Text(horario.format(context)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> verificarConflito(
+    DateTime novaData,
+    int novoTempo,
+  ) async {
+    final novaDataFinal = novaData.add(
+      Duration(minutes: novoTempo),
+    );
+
+    final inicioDia = DateTime(novaData.year, novaData.month, novaData.day);
+    final fimDia = inicioDia.add(const Duration(days: 1));
+
+    // Busca apenas os agendamentos daquele dia para melhor performance e menor custo
+    final snapshot = await FirebaseFirestore.instance
+        .collection('agendamentos')
+        .where('data', isGreaterThanOrEqualTo: Timestamp.fromDate(inicioDia))
+        .where('data', isLessThan: Timestamp.fromDate(fimDia))
+        .get();
+
+    for (final documento in snapshot.docs) {
+      // Na edição, ignora o próprio agendamento.
+      if (documento.id == widget.agendamentoId) {
+        continue;
+      }
+
+      final dados = documento.data();
+
+      // Considera apenas agendamentos com status "agendado"
+      if (dados['status'] != 'agendado') {
+        continue;
+      }
+
+      final timestamp = dados['data'] as Timestamp?;
+      if (timestamp == null) {
+        continue;
+      }
+
+      final inicioExistente = timestamp.toDate();
+      final tempoExistente =
+          (dados['tempoTotal'] as num?)?.toInt() ?? 0;
+
+      final fimExistente = inicioExistente.add(
+        Duration(minutes: tempoExistente),
       );
-    },
-  );
 
-  return resultado ?? false;
-}
+      // Verifica se os intervalos se sobrepõem.
+      final existeConflito =
+          novaData.isBefore(fimExistente) &&
+          novaDataFinal.isAfter(inicioExistente);
 
-Future<void> salvarAgendamento() async {
-  if (salvandoAgendamento) return;
-
-  setState(() {
-    salvandoAgendamento = true;
-  });
-  try {
-    // Busca os dados do cliente selecionado.
-    final clienteDoc = await FirebaseFirestore.instance
-        .collection('clientes')
-        .doc(clienteSelecionadoId)
-        .get();
-
-    
-
-    if (!clienteDoc.exists || clienteDoc.data() == null) {
-      throw Exception('Cliente não encontrado.');
+      if (existeConflito) {
+        return true;
+      }
     }
 
-    final cliente = clienteDoc.data()!;
+    return false;
+  }
 
-    // Busca os serviços cadastrados.
-    final servicosSnapshot = await FirebaseFirestore.instance
-        .collection('servicos')
-        .get();
+  Future<bool> confirmarConflito() async {
+    final resultado = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Atenção: conflito de horário'),
+          content: const Text(
+            'Já existe um atendimento nesse intervalo. '
+            'Deseja continuar mesmo assim?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: const Text('Escolher outro horário'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Continuar mesmo assim'),
+            ),
+          ],
+        );
+      },
+    );
 
-    
+    return resultado ?? false;
+  }
 
-    final documentosSelecionados = servicosSnapshot.docs
-        .where((doc) => servicosSelecionados.contains(doc.id))
-        .toList();
+  Future<void> salvarAgendamento() async {
+    if (salvandoAgendamento) return;
 
-    if (documentosSelecionados.length != servicosSelecionados.length) {
-      throw Exception('Um ou mais serviços não foram encontrados.');
+    if (clienteSelecionadoId == null ||
+        dataSelecionada == null ||
+        horarioSelecionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preencha todas as etapas antes de finalizar.'),
+        ),
+      );
+      return;
     }
 
-    double valorTotal = 0;
-    int tempoTotal = 0;
+    setState(() {
+      salvandoAgendamento = true;
+    });
 
-    final listaServicos = documentosSelecionados.map((doc) {
-      final dados = doc.data();
-      final valor = (dados['valor'] as num?)?.toDouble() ?? 0;
-      final tempo = (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+    try {
+      // Busca os dados do cliente selecionado.
+      final clienteDoc = await FirebaseFirestore.instance
+          .collection('clientes')
+          .doc(clienteSelecionadoId)
+          .get();
 
-      valorTotal += valor;
-      tempoTotal += tempo;
+      if (!clienteDoc.exists || clienteDoc.data() == null) {
+        throw Exception('Cliente não encontrado.');
+      }
 
-      return {
-        'servicoId': doc.id,
-        'nome': dados['nome'] ?? 'Serviço',
-        'valor': valor,
-        'tempoMedio': tempo,
+      final cliente = clienteDoc.data()!;
+
+      // Busca os serviços cadastrados.
+      final servicosSnapshot = await FirebaseFirestore.instance
+          .collection('servicos')
+          .get();
+
+      final documentosSelecionados = servicosSnapshot.docs
+          .where((doc) => servicosSelecionados.contains(doc.id))
+          .toList();
+
+      if (documentosSelecionados.length != servicosSelecionados.length) {
+        throw Exception('Um ou mais serviços não foram encontrados.');
+      }
+
+      double valorTotal = 0;
+      int tempoTotal = 0;
+
+      final listaServicos = documentosSelecionados.map((doc) {
+        final dados = doc.data();
+        final valor = (dados['valor'] as num?)?.toDouble() ?? 0;
+        final tempo = (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+
+        valorTotal += valor;
+        tempoTotal += tempo;
+
+        return {
+          'servicoId': doc.id,
+          'nome': dados['nome'] ?? 'Serviço',
+          'valor': valor,
+          'tempoMedio': tempo,
+        };
+      }).toList();
+
+      // Combina a data escolhida com o horário selecionado.
+      final dataHora = DateTime(
+        dataSelecionada!.year,
+        dataSelecionada!.month,
+        dataSelecionada!.day,
+        horarioSelecionado!.hour,
+        horarioSelecionado!.minute,
+      );
+
+      final temConflito = await verificarConflito(
+        dataHora,
+        tempoTotal,
+      );
+
+      if (temConflito) {
+        if (!mounted) return;
+
+        final continuar = await confirmarConflito();
+
+        if (!continuar) {
+          setState(() {
+            etapaAtual = 2; // Volta para a etapa de seleção de data e horário
+          });
+          return;
+        }
+      }
+
+      // Referência à coleção de agendamentos.
+      final colecao = FirebaseFirestore.instance.collection('agendamentos');
+
+      // Dados que podem ser alterados na edição.
+      final dadosAgendamento = {
+        'clienteId': clienteSelecionadoId,
+        'clienteNome': cliente['nome'] ?? '',
+        'servicos': listaServicos,
+        'valorTotal': valorTotal,
+        'tempoTotal': tempoTotal,
+        'data': Timestamp.fromDate(dataHora),
       };
-    }).toList();
 
-    // Combina a data escolhida com o horário selecionado.
-    final dataHora = DateTime(
-      dataSelecionada!.year,
-      dataSelecionada!.month,
-      dataSelecionada!.day,
-      horarioSelecionado!.hour,
-      horarioSelecionado!.minute,
-    );
-    
-    final temConflito = await verificarConflito(
-  dataHora,
-  tempoTotal,
-    );
+      if (widget.agendamentoId == null) {
+        // Cadastro: cria um novo documento.
+        await colecao.add({
+          ...dadosAgendamento,
+          'criadoEm': FieldValue.serverTimestamp(),
+          'status': 'agendado',
+        });
+      } else {
+        // Edição: atualiza o documento existente.
+        await colecao.doc(widget.agendamentoId).update(dadosAgendamento);
+      }
 
-    if (temConflito) {
       if (!mounted) return;
 
-      final continuar = await confirmarConflito();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.agendamentoId == null
+                ? 'Agendamento salvo com sucesso!'
+                : 'Agendamento atualizado com sucesso!',
+          ),
+        ),
+      );
 
-      if (!continuar) return;
-    }
+      await Future.delayed(const Duration(milliseconds: 300));
 
-    // Grava o agendamento no Firestore.
-    
-// Referência à coleção de agendamentos.
-final colecao = FirebaseFirestore.instance.collection('agendamentos');
+      if (!mounted) return;
 
-// Dados que podem ser alterados na edição.
-final dadosAgendamento = {
-  'clienteId': clienteSelecionadoId,
-  'clienteNome': cliente['nome'] ?? '',
-  'servicos': listaServicos,
-  'valorTotal': valorTotal,
-  'tempoTotal': tempoTotal,
-  'data': Timestamp.fromDate(dataHora),
-};
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
 
-if (widget.agendamentoId == null) {
-  // Cadastro: cria um novo documento.
-  await colecao.add({
-    ...dadosAgendamento,
-    'criadoEm': FieldValue.serverTimestamp(),
-    'status': 'agendado',
-  });
-} else {
-  // Edição: atualiza o documento existente.
-  await colecao.doc(widget.agendamentoId).update(dadosAgendamento);
-}
-
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-       SnackBar(
-       content: Text(
-         widget.agendamentoId == null
-      ? 'Agendamento salvo com sucesso!'
-      : 'Agendamento atualizado com sucesso!',
-),
-      ),
-    );
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted) return;
-
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Erro ao salvar agendamento: $e'),
-      ),
-    );
-  }
-  finally {
-    if (mounted) {
-      setState(() {
-        salvandoAgendamento = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar agendamento: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          salvandoAgendamento = false;
+        });
+      }
     }
   }
-}
-
 
   void avancarEtapa() {
     if (etapaAtual == 0 && clienteSelecionadoId == null) {
@@ -685,14 +699,14 @@ if (widget.agendamentoId == null) {
     }
 
     if (etapaAtual == 2 &&
-      (dataSelecionada == null || horarioSelecionado == null)) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Selecione a data e o horário.'),
-      ),
-    );
-    return;
-  }
+        (dataSelecionada == null || horarioSelecionado == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione a data e o horário.'),
+        ),
+      );
+      return;
+    }
 
     if (etapaAtual < 3) {
       setState(() {
@@ -701,13 +715,13 @@ if (widget.agendamentoId == null) {
     }
   }
 
-void voltarEtapa() {
-      if (etapaAtual > 0) {
-        setState(() {
-          etapaAtual--;
-        });
-      }
+  void voltarEtapa() {
+    if (etapaAtual > 0) {
+      setState(() {
+        etapaAtual--;
+      });
     }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -718,16 +732,18 @@ void voltarEtapa() {
         ),
       );
     }
-    return Scaffold(
-     appBar: AppBar(
-        title: Text(
-          widget.agendamentoId == null
-              ? 'Novo Agendamento'
-              : 'Editar Agendamento',
-        ),
-      ),
 
-      body: Padding(
+    return PopScope(
+      canPop: !salvandoAgendamento,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.agendamentoId == null
+                ? 'Novo Agendamento'
+                : 'Editar Agendamento',
+          ),
+        ),
+        body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -736,15 +752,11 @@ void voltarEtapa() {
                 'Etapa ${etapaAtual + 1} de 4',
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 24),
-
               LinearProgressIndicator(
                 value: (etapaAtual + 1) / 4,
               ),
-
               const SizedBox(height: 32),
-
               Center(
                 child: Text(
                   [
@@ -759,7 +771,6 @@ void voltarEtapa() {
                   ),
                 ),
               ),
-
               Expanded(
                 child: etapaAtual == 0
                     ? etapaSelecionarCliente()
@@ -768,49 +779,45 @@ void voltarEtapa() {
                         : etapaAtual == 2
                             ? etapaSelecionarDataHorario()
                             : etapaConfirmarAgendamento(),
-
               ),
-
               Row(
                 children: [
                   if (etapaAtual > 0)
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: voltarEtapa,
+                        onPressed: salvandoAgendamento ? null : voltarEtapa,
                         child: const Text('Voltar'),
                       ),
                     ),
-
-          if (etapaAtual > 0)
-            const SizedBox(width: 12),
-
-          Expanded(
-            child: 
-                ElevatedButton(
-                  onPressed: salvandoAgendamento
-                      ? null
-                      : etapaAtual == 3
-                          ? salvarAgendamento
-                          : avancarEtapa,
-                  child: salvandoAgendamento
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          etapaAtual == 3 ? 'Finalizar' : 'Continuar',
-                        ),
-                ),
-
+                  if (etapaAtual > 0) const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: salvandoAgendamento
+                          ? null
+                          : etapaAtual == 3
+                              ? salvarAgendamento
+                              : avancarEtapa,
+                      child: salvandoAgendamento
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              etapaAtual == 3 ? 'Finalizar' : 'Continuar',
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ],
-  ),
-),
     );
   }
 }
+
+
