@@ -9,91 +9,89 @@ class ServicoPage extends StatefulWidget {
 }
 
 class _ServicoPageState extends State<ServicoPage> {
-
   final nomeController = TextEditingController();
   final valorController = TextEditingController();
   final tempoController = TextEditingController();
 
-  
-    void abrirEdicao(DocumentSnapshot servico) {
-      final dados = servico.data() as Map<String, dynamic>;
+  @override
+  void dispose() {
+    nomeController.dispose();
+    valorController.dispose();
+    tempoController.dispose();
+    super.dispose();
+  }
 
-      nomeController.text = dados['nome'] ?? '';
-      valorController.text = (dados['valor'] ?? 0).toString();
-      tempoController.text = (dados['tempoMedio'] ?? 0).toString();
+  void abrirEdicao(DocumentSnapshot servico) {
+    final dados = servico.data() as Map<String, dynamic>;
 
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (context) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Editar Serviço',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+    nomeController.text = dados['nome'] ?? '';
+    valorController.text = (dados['valor'] ?? 0).toString();
+    tempoController.text = (dados['tempoMedio'] ?? 0).toString();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Editar Serviço',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
-
-                  const SizedBox(height: 20),
-
-                  TextField(
-                    controller: nomeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome do serviço',
-                      border: OutlineInputBorder(),
-                    ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nomeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome do serviço',
+                    border: OutlineInputBorder(),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: valorController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Valor',
-                      prefixText: 'R\$ ',
-                      border: OutlineInputBorder(),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: valorController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: tempoController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Tempo médio (minutos)',
-                      border: OutlineInputBorder(),
-                    ),
+                  decoration: const InputDecoration(
+                    labelText: 'Valor',
+                    prefixText: 'R\$ ',
+                    border: OutlineInputBorder(),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: tempoController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Tempo médio (minutos)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
+                          final nome = nomeController.text.trim();
                           final valor = double.tryParse(
                             valorController.text.replaceAll(',', '.'),
                           );
                           final tempo = int.tryParse(tempoController.text);
 
-                          if (nomeController.text.trim().isEmpty ||
+                          if (nome.isEmpty ||
                               valor == null ||
                               valor < 0 ||
                               tempo == null ||
@@ -106,36 +104,49 @@ class _ServicoPageState extends State<ServicoPage> {
                             return;
                           }
 
-                          await FirebaseFirestore.instance
-                              .collection('servicos')
-                              .doc(servico.id)
-                              .update({
-                            'nome': nomeController.text.trim(),
-                            'valor': valor,
-                            'tempoMedio': tempo,
-                          });
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('servicos')
+                                .doc(servico.id)
+                                .update({
+                              'nome': nome,
+                              'valor': valor,
+                              'tempoMedio': tempo,
+                            });
 
-                          nomeController.clear();
-                          valorController.clear();
-                          tempoController.clear();
+                            nomeController.clear();
+                            valorController.clear();
+                            tempoController.clear();
 
-                          if (context.mounted) {
-                            Navigator.pop(context);
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Serviço atualizado com sucesso!'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao atualizar serviço: $e'),
+                              ),
+                            );
                           }
                         },
                         child: const Text('Salvar alterações'),
                       ),
                     ),
-
                     const SizedBox(width: 12),
-
                     IconButton(
                       tooltip: 'Excluir serviço',
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () async {
                         final confirmar = await showDialog<bool>(
-                          context: context,
-                          builder: (context) {
+                          context: bottomSheetContext,
+                          builder: (dialogContext) {
                             return AlertDialog(
                               title: const Text('Excluir serviço'),
                               content: const Text(
@@ -144,14 +155,18 @@ class _ServicoPageState extends State<ServicoPage> {
                               actions: [
                                 TextButton(
                                   onPressed: () {
-                                    Navigator.pop(context, false);
+                                    Navigator.pop(dialogContext, false);
                                   },
                                   child: const Text('Cancelar'),
                                 ),
                                 ElevatedButton(
                                   onPressed: () {
-                                    Navigator.pop(context, true);
+                                    Navigator.pop(dialogContext, true);
                                   },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
                                   child: const Text('Excluir'),
                                 ),
                               ],
@@ -160,32 +175,45 @@ class _ServicoPageState extends State<ServicoPage> {
                         );
 
                         if (confirmar == true) {
-                          await FirebaseFirestore.instance
-                              .collection('servicos')
-                              .doc(servico.id)
-                              .delete();
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('servicos')
+                                .doc(servico.id)
+                                .delete();
 
-                          nomeController.clear();
-                          valorController.clear();
-                          tempoController.clear();
+                            nomeController.clear();
+                            valorController.clear();
+                            tempoController.clear();
 
-                          if (context.mounted) {
-                            Navigator.pop(context);
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Serviço excluído com sucesso!'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao excluir serviço: $e'),
+                              ),
+                            );
                           }
                         }
                       },
                     ),
                   ],
-                )
-
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-      );
-    }
-
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,14 +221,9 @@ class _ServicoPageState extends State<ServicoPage> {
       appBar: AppBar(
         title: const Text('Serviços'),
       ),
-
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('servicos')
-            .snapshots(),
-
+        stream: FirebaseFirestore.instance.collection('servicos').snapshots(),
         builder: (context, snapshot) {
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -223,13 +246,9 @@ class _ServicoPageState extends State<ServicoPage> {
 
           return ListView.builder(
             itemCount: servicos.length,
-
             itemBuilder: (context, index) {
-
               final servico = servicos[index];
-
-              final dados =
-                  servico.data() as Map<String, dynamic>;
+              final dados = servico.data() as Map<String, dynamic>;
 
               final nome = dados['nome'] ?? '';
               final valor = dados['valor'] ?? 0;
@@ -239,18 +258,15 @@ class _ServicoPageState extends State<ServicoPage> {
                 leading: const CircleAvatar(
                   child: Icon(Icons.content_cut),
                 ),
-
                 title: Text(nome),
-
                 subtitle: Text(
                   'R\$ ${(valor as num).toStringAsFixed(2).replaceAll('.', ',')}'
                   ' - $tempoMedio min',
                 ),
-
                 trailing: IconButton(
                   icon: const Icon(Icons.edit),
                   onPressed: () {
-                    abrirEdicao(servico); 
+                    abrirEdicao(servico);
                   },
                 ),
               );
@@ -258,23 +274,22 @@ class _ServicoPageState extends State<ServicoPage> {
           );
         },
       ),
-      // FloatingActionButton to add a new service
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           nomeController.clear();
           valorController.clear();
           tempoController.clear();
-          
+
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (context) {
+            builder: (bottomSheetContext) {
               return Padding(
                 padding: EdgeInsets.only(
                   left: 16,
                   right: 16,
                   top: 16,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                  bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 16,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -287,9 +302,7 @@ class _ServicoPageState extends State<ServicoPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       TextField(
                         controller: nomeController,
                         decoration: const InputDecoration(
@@ -297,21 +310,19 @@ class _ServicoPageState extends State<ServicoPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
                       TextField(
                         controller: valorController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Valor',
                           prefixText: 'R\$ ',
                           border: OutlineInputBorder(),
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
                       TextField(
                         controller: tempoController,
                         keyboardType: TextInputType.number,
@@ -320,24 +331,57 @@ class _ServicoPageState extends State<ServicoPage> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       ElevatedButton(
                         onPressed: () async {
-                          final db = FirebaseFirestore.instance;
+                          final nome = nomeController.text.trim();
+                          final valor = double.tryParse(
+                            valorController.text.replaceAll(',', '.'),
+                          );
+                          final tempo = int.tryParse(tempoController.text);
 
-                          await db.collection('servicos').add({
-                            'nome': nomeController.text,
-                            'valor': double.parse(valorController.text.replaceAll(',', '.')),
-                            'tempoMedio': int.parse(tempoController.text),
-                          });
+                          if (nome.isEmpty ||
+                              valor == null ||
+                              valor < 0 ||
+                              tempo == null ||
+                              tempo <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Confira os dados do serviço.'),
+                              ),
+                            );
+                            return;
+                          }
 
-                          nomeController.clear();
-                          valorController.clear();
-                          tempoController.clear();
+                          try {
+                            final db = FirebaseFirestore.instance;
+                            await db.collection('servicos').add({
+                              'nome': nome,
+                              'valor': valor,
+                              'tempoMedio': tempo,
+                            });
 
-                          Navigator.pop(context);
+                            nomeController.clear();
+                            valorController.clear();
+                            tempoController.clear();
+
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Serviço cadastrado com sucesso!'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao salvar serviço: $e'),
+                              ),
+                            );
+                          }
                         },
                         child: const Text('Salvar'),
                       ),

@@ -9,179 +9,227 @@ class ClientePage extends StatefulWidget {
   State<ClientePage> createState() => _ClientePageState();
 }
 
-
 class _ClientePageState extends State<ClientePage> {
   final nomeController = TextEditingController();
   final apelidoController = TextEditingController();
   final telefoneController = TextEditingController();
 
-void abrirEdicao(DocumentSnapshot cliente) {
-  final dados = cliente.data() as Map<String, dynamic>;
+  @override
+  void dispose() {
+    nomeController.dispose();
+    apelidoController.dispose();
+    telefoneController.dispose();
+    super.dispose();
+  }
 
-  nomeController.text = dados['nome'] ?? '';
-  apelidoController.text = dados['apelido'] ?? '';
-  telefoneController.text = dados['telefone'] ?? '';
+  void abrirEdicao(DocumentSnapshot cliente) {
+    final dados = cliente.data() as Map<String, dynamic>;
 
-  showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (context) {
-            return Padding(
-              padding: EdgeInsets.only(left: 16,
-               right:  16,
-              top: 16,
-               bottom: MediaQuery.of(context).viewInsets.bottom + 16,),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Editar Cliente',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+    nomeController.text = dados['nome'] ?? '';
+    apelidoController.text = dados['apelido'] ?? '';
+    telefoneController.text = dados['telefone'] ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Editar Cliente',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
-
-                  const SizedBox(height: 20),
-
-                  TextField(
-                    controller: nomeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome',
-                      border: OutlineInputBorder(),
-                    ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nomeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome',
+                    border: OutlineInputBorder(),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: apelidoController,
-                    decoration: const InputDecoration(
-                      labelText: 'Apelido',
-                      border: OutlineInputBorder(),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: apelidoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Apelido',
+                    border: OutlineInputBorder(),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: telefoneController,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      TelefoneInputFormatter(),
-                    ],
-                    decoration: const InputDecoration(
-                      labelText: 'Telefone',
-                      hintText: '(41) 99999-9999',
-                      border: OutlineInputBorder(),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: telefoneController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    TelefoneInputFormatter(),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Telefone',
+                    hintText: '(41) 99999-9999',
+                    border: OutlineInputBorder(),
                   ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final nome = nomeController.text.trim();
+                        final telefone = telefoneController.text.replaceAll(
+                          RegExp(r'\D'),
+                          '',
+                        );
 
-                  const SizedBox(height: 20),
+                        if (nome.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Informe o nome do cliente.'),
+                            ),
+                          );
+                          return;
+                        }
 
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () async {
-
-                          final telefone = telefoneController.text.replaceAll(
-                RegExp(r'\D'),
-                '',
-              );
-
-                if (telefone.length != 11) {
-                  await showDialog<void>(
-                    context: context,
-                    builder: (dialogContext) {
-                      return AlertDialog(
-                        icon: const Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 40,
-                        ),
-                        title: const Text('Telefone inválido'),
-                        content: const Text(
-                          'Informe um celular com DDD e 11 dígitos.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(dialogContext);
-                            },
-                            child: const Text('Entendi'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  return;
-                }
-
-                          await FirebaseFirestore.instance
-                              .collection('clientes')
-                              .doc(cliente.id)
-                              .update({
-                            'nome': nomeController.text,
-                            'apelido': apelidoController.text,
-                            'telefone': telefoneController.text,
-                          });
-
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Salvar'),
-                      ),
-
-                      const Spacer(),
-
-                      IconButton(
-                        onPressed: () async {
-                          final confirmar = await showDialog<bool>(
-                            context: context,
-                            builder: (context) {
+                        if (telefone.length != 11) {
+                          await showDialog<void>(
+                            context: bottomSheetContext,
+                            builder: (dialogContext) {
                               return AlertDialog(
-                                title: const Text('Excluir cliente'),
+                                icon: const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 40,
+                                ),
+                                title: const Text('Telefone inválido'),
                                 content: const Text(
-                                  'Tem certeza que deseja excluir este cliente?',
+                                  'Informe um celular com DDD e 11 dígitos.',
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
-                                      Navigator.pop(context, false);
+                                      Navigator.pop(dialogContext);
                                     },
-                                    child: const Text('Cancelar'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context, true);
-                                    },
-                                    child: const Text('Excluir'),
+                                    child: const Text('Entendi'),
                                   ),
                                 ],
                               );
                             },
                           );
+                          return;
+                        }
 
-                          if (confirmar == true) {
+                        try {
+                          await FirebaseFirestore.instance
+                              .collection('clientes')
+                              .doc(cliente.id)
+                              .update({
+                            'nome': nome,
+                            'apelido': apelidoController.text.trim(),
+                            'telefone': telefoneController.text.trim(),
+                          });
+
+                          if (!bottomSheetContext.mounted) return;
+                          Navigator.pop(bottomSheetContext);
+
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Cliente atualizado com sucesso!'),
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Erro ao atualizar cliente: $e'),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Salvar'),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: 'Excluir cliente',
+                      onPressed: () async {
+                        final confirmar = await showDialog<bool>(
+                          context: bottomSheetContext,
+                          builder: (dialogContext) {
+                            return AlertDialog(
+                              title: const Text('Excluir cliente'),
+                              content: const Text(
+                                'Tem certeza que deseja excluir este cliente?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext, false);
+                                  },
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext, true);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Excluir'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (confirmar == true) {
+                          try {
                             await FirebaseFirestore.instance
                                 .collection('clientes')
                                 .doc(cliente.id)
                                 .delete();
 
-                            Navigator.pop(context);
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cliente excluído com sucesso!'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao excluir cliente: $e'),
+                              ),
+                            );
                           }
-                        },
-                        icon: const Icon(Icons.delete),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
+                        }
+                      },
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
-      }
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,178 +237,197 @@ void abrirEdicao(DocumentSnapshot cliente) {
       appBar: AppBar(
         title: const Text('Clientes'),
       ),
-
       body: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('clientes')
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return const Center(
-                child: Text('Erro ao carregar clientes'),
-              );
-            }
-
-            final clientes = snapshot.data?.docs ?? [];
-
-            if (clientes.isEmpty) {
-              return const Center(
-                child: Text('Nenhum cliente cadastrado'),
-              );
-            }
-
-            return ListView.builder(
-              itemCount: clientes.length,
-              itemBuilder: (context, index) {
-                final cliente = clientes[index];
-
-                final dados = cliente.data() as Map<String, dynamic>;
-
-                final nome = dados['nome'] ?? '';
-                final apelido = dados['apelido'] ?? '';
-                final telefone = dados['telefone'] ?? '';
-
-                return ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.face_2),
-                  ),
-                  title: Text(nome),
-                  subtitle: Text(
-                    '$apelido - $telefone',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                     onPressed: () {
-                      abrirEdicao(cliente);
-                    }
-                ),
-                );
-              },
+        stream: FirebaseFirestore.instance.collection('clientes').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
             );
-          },
-        ),
-      // Botão flutuante para adicionar um novo cliente
+          }
+
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Erro ao carregar clientes'),
+            );
+          }
+
+          final clientes = snapshot.data?.docs ?? [];
+
+          if (clientes.isEmpty) {
+            return const Center(
+              child: Text('Nenhum cliente cadastrado'),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: clientes.length,
+            itemBuilder: (context, index) {
+              final cliente = clientes[index];
+              final dados = cliente.data() as Map<String, dynamic>;
+
+              final nome = dados['nome'] ?? '';
+              final apelido = dados['apelido'] ?? '';
+              final telefone = dados['telefone'] ?? '';
+
+              return ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.face_2),
+                ),
+                title: Text(nome),
+                subtitle: Text(
+                  apelido.toString().isNotEmpty
+                      ? '$apelido - $telefone'
+                      : telefone.toString(),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () {
+                    abrirEdicao(cliente);
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           nomeController.clear();
           apelidoController.clear();
           telefoneController.clear();
+
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (context) {
+            builder: (bottomSheetContext) {
               return Padding(
-                padding: EdgeInsets.only(left: 16,
-                 right:  16,
-                 top: 16,
-                 bottom: MediaQuery.of(context).viewInsets.bottom + 16,),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Novo Cliente',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 16,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Novo Cliente',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-
-        const SizedBox(height: 20),
-
-        TextField(
-          controller: nomeController,
-          decoration: const InputDecoration(
-            labelText: 'Nome',
-            border: OutlineInputBorder(),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        TextField(
-          controller: apelidoController,
-          decoration: const InputDecoration(
-            labelText: 'Apelido',
-            border: OutlineInputBorder(),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        TextField(
-          controller: telefoneController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            TelefoneInputFormatter(),
-            ],
-          decoration: const InputDecoration(
-          labelText: 'Telefone',
-          hintText: '(41) 99999-9999',
-          border: OutlineInputBorder(),
-             ),
-            ),
-
-        const SizedBox(height: 20),
-
-        ElevatedButton(
-          onPressed: () async {
-            // Salvar o cliente no Firestore
-            final telefone = telefoneController.text.replaceAll(
-                RegExp(r'\D'),
-                '',
-              );
-
-                if (telefone.length != 11) {
-                  await showDialog<void>(
-                    context: context,
-                    builder: (dialogContext) {
-                      return AlertDialog(
-                        icon: const Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 40,
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: nomeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nome',
+                          border: OutlineInputBorder(),
                         ),
-                        title: const Text('Telefone inválido'),
-                        content: const Text(
-                          'Informe um celular com DDD e 11 dígitos.',
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: apelidoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Apelido',
+                          border: OutlineInputBorder(),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(dialogContext);
-                            },
-                            child: const Text('Entendi'),
-                          ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: telefoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          TelefoneInputFormatter(),
                         ],
-                      );
-                    },
-                  );
+                        decoration: const InputDecoration(
+                          labelText: 'Telefone',
+                          hintText: '(41) 99999-9999',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final nome = nomeController.text.trim();
+                          final telefone = telefoneController.text.replaceAll(
+                            RegExp(r'\D'),
+                            '',
+                          );
 
-                  return;
-                }
+                          if (nome.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Informe o nome do cliente.'),
+                              ),
+                            );
+                            return;
+                          }
 
-            final db = FirebaseFirestore.instance;
-           await db.collection('clientes').add({
-              'nome': nomeController.text,
-              'apelido': apelidoController.text,
-              'telefone': telefoneController.text,
-            });
+                          if (telefone.length != 11) {
+                            await showDialog<void>(
+                              context: bottomSheetContext,
+                              builder: (dialogContext) {
+                                return AlertDialog(
+                                  icon: const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                  title: const Text('Telefone inválido'),
+                                  content: const Text(
+                                    'Informe um celular com DDD e 11 dígitos.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(dialogContext);
+                                      },
+                                      child: const Text('Entendi'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                            return;
+                          }
 
-            Navigator.pop(context);
-          },
-          child: const Text('Salvar'),
-        ),
-      ],
-    ),
-  );
-},
+                          try {
+                            final db = FirebaseFirestore.instance;
+                            await db.collection('clientes').add({
+                              'nome': nome,
+                              'apelido': apelidoController.text.trim(),
+                              'telefone': telefoneController.text.trim(),
+                            });
+
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cliente salvo com sucesso!'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao salvar cliente: $e'),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Salvar'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
         child: const Icon(Icons.add),
@@ -368,7 +435,6 @@ void abrirEdicao(DocumentSnapshot cliente) {
     );
   }
 }
-
 
 class TelefoneInputFormatter extends TextInputFormatter {
   @override
@@ -382,7 +448,6 @@ class TelefoneInputFormatter extends TextInputFormatter {
       numero = numero.substring(0, 11);
     }
 
-    // Conta quantos números existem antes do cursor.
     final cursorOriginal =
         newValue.selection.extentOffset.clamp(0, newValue.text.length);
 
@@ -413,7 +478,6 @@ class TelefoneInputFormatter extends TextInputFormatter {
       }
     }
 
-    // Reposiciona o cursor considerando os dígitos digitados.
     int novoCursor = 0;
     int digitosContados = 0;
 
@@ -425,8 +489,6 @@ class TelefoneInputFormatter extends TextInputFormatter {
       novoCursor++;
     }
 
-    // Se o cursor estiver antes de um separador, avança até uma
-    // posição válida sem perder o número que está sendo editado.
     if (novoCursor < formatado.length &&
         digitosContados == digitosAntesDoCursor &&
         !RegExp(r'\d').hasMatch(formatado[novoCursor])) {
@@ -441,4 +503,3 @@ class TelefoneInputFormatter extends TextInputFormatter {
     );
   }
 }
-
