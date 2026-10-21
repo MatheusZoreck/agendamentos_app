@@ -147,8 +147,19 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                   apelido.toString().isNotEmpty
                       ? '$nome ($apelido)'
                       : nome.toString(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2C2420),
+                  ),
                 ),
-                subtitle: Text(telefone.toString()),
+                subtitle: Text(
+                  telefone.toString(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF5A4940),
+                  ),
+                ),
               );
             },
           ),
@@ -192,10 +203,21 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
             return CheckboxListTile(
               value: servicosSelecionados.contains(documento.id),
-              title: Text(nome.toString()),
+              title: Text(
+                nome.toString(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2C2420),
+                ),
+              ),
               subtitle: Text(
                 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}'
                 ' • $tempo min',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF5A4940),
+                ),
               ),
               onChanged: (marcado) {
                 setState(() {
@@ -247,7 +269,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
       children: [
         const Text(
           'Escolha a data do agendamento:',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2C2420),
+          ),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -259,12 +285,17 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                 : '${dataSelecionada!.day.toString().padLeft(2, '0')}/'
                   '${dataSelecionada!.month.toString().padLeft(2, '0')}/'
                   '${dataSelecionada!.year}',
+            style: const TextStyle(fontSize: 16),
           ),
         ),
         const SizedBox(height: 24),
         const Text(
           'Escolha o horário:',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2C2420),
+          ),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -274,6 +305,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
             horarioSelecionado == null
                 ? 'Selecionar horário'
                 : horarioSelecionado!.format(context),
+            style: const TextStyle(fontSize: 16),
           ),
         ),
       ],
@@ -293,7 +325,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
         if (clienteSnapshot.hasError) {
           return const Center(
-            child: Text('Erro ao carregar os dados do cliente.'),
+            child: Text(
+              'Erro ao carregar os dados do cliente.',
+              style: TextStyle(fontSize: 16, color: Color(0xFF2C2420)),
+            ),
           );
         }
 
@@ -301,7 +336,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
         if (cliente == null) {
           return const Center(
-            child: Text('Cliente não encontrado.'),
+            child: Text(
+              'Cliente não encontrado.',
+              style: TextStyle(fontSize: 16, color: Color(0xFF2C2420)),
+            ),
           );
         }
 
@@ -319,7 +357,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
             if (servicosSnapshot.hasError) {
               return const Center(
-                child: Text('Erro ao carregar os serviços.'),
+                child: Text(
+                  'Erro ao carregar os serviços.',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF2C2420)),
+                ),
               );
             }
 
@@ -333,6 +374,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               return const Center(
                 child: Text(
                   'Um ou mais serviços selecionados não foram encontrados.',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF2C2420)),
                 ),
               );
             }
@@ -355,7 +397,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
             if (data == null || horario == null) {
               return const Center(
-                child: Text('Data ou horário não definidos.'),
+                child: Text(
+                  'Data ou horário não definidos.',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF2C2420)),
+                ),
               );
             }
 
@@ -365,28 +410,61 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                 '${data.year}';
 
             return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                const Text(
-                  'Confira os dados do agendamento',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    'Confira os dados do agendamento',
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C2420),
+                    ),
                   ),
                 ),
-                const Divider(),
+                const Divider(height: 24),
                 ListTile(
-                  leading: const Icon(Icons.face_2),
-                  title: const Text('Cliente'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFEDE0D4),
+                    child: Icon(Icons.face_2, color: Color(0xFF6F4E37)),
+                  ),
+                  title: const Text(
+                    'Cliente',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF6F554B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   subtitle: Text(
                     (cliente['apelido'] ?? '').toString().isNotEmpty
                         ? '${cliente['nome']} (${cliente['apelido']})'
                         : (cliente['nome'] ?? 'Sem nome').toString(),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C2420),
+                    ),
                   ),
                 ),
-                const ListTile(
-                  leading: Icon(Icons.cut),
-                  title: Text('Serviços selecionados'),
+                const SizedBox(height: 12),
+                Row(
+                  children: const [
+                    Icon(Icons.content_cut, size: 20, color: Color(0xFF6F4E37)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Serviços selecionados',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2C2420),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
                 ...selecionados.map((documento) {
                   final dados = documento.data();
                   final nome =
@@ -396,42 +474,176 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                   final tempo =
                       (dados['tempoMedio'] as num?)?.toInt() ?? 0;
 
-                  return ListTile(
-                    dense: true,
-                    title: Text(nome),
-                    subtitle: Text('$tempo minutos'),
-                    trailing: Text(
-                      'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE5D7CD)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nome,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2C2420),
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '$tempo minutos',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF5A4940),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2C2420),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.payments),
-                  title: const Text('Valor total'),
-                  trailing: Text(
-                    'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                const Divider(height: 28),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5D7CD)),
                   ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.timelapse),
-                  title: const Text('Tempo estimado'),
-                  trailing: Text('$tempoTotal minutos'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.calendar_month),
-                  title: const Text('Data'),
-                  trailing: Text(dataFormatada),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: const Text('Horário'),
-                  trailing: Text(horario.format(context)),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.payments_outlined, color: Colors.green, size: 24),
+                              SizedBox(width: 10),
+                              Text(
+                                'Valor total',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2C2420),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 19,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.timelapse, color: Color(0xFF6F4E37), size: 22),
+                              SizedBox(width: 10),
+                              Text(
+                                'Tempo estimado',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4A3B32),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '$tempoTotal minutos',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C2420),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.calendar_month, color: Color(0xFF6F4E37), size: 22),
+                              SizedBox(width: 10),
+                              Text(
+                                'Data',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4A3B32),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            dataFormatada,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C2420),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.access_time, color: Color(0xFF6F4E37), size: 22),
+                              SizedBox(width: 10),
+                              Text(
+                                'Horário',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4A3B32),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            horario.format(context),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C2420),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -751,12 +963,21 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               Text(
                 'Etapa ${etapaAtual + 1} de 4',
                 textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A3B32),
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: (etapaAtual + 1) / 4,
+                backgroundColor: const Color(0xFFE2D5CC),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5E4D)),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(4),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               Center(
                 child: Text(
                   [
@@ -768,9 +989,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C2420),
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
               Expanded(
                 child: etapaAtual == 0
                     ? etapaSelecionarCliente()
@@ -780,6 +1003,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                             ? etapaSelecionarDataHorario()
                             : etapaConfirmarAgendamento(),
               ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   if (etapaAtual > 0)
@@ -803,6 +1027,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
+                                color: Colors.white,
                               ),
                             )
                           : Text(
@@ -819,4 +1044,3 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
     );
   }
 }
-
