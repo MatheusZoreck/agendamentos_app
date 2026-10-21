@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -10,10 +9,7 @@ class HistoricoPage extends StatefulWidget {
 }
 
 class _HistoricoPageState extends State<HistoricoPage> {
-
-
-
- // 1. Variáveis da classe
+  // 1. Variáveis da classe
   late DateTime dataInicial;
   late DateTime dataFinal;
 
@@ -38,240 +34,276 @@ class _HistoricoPageState extends State<HistoricoPage> {
   }
 
   // 3. selecionarData()
- Future<void> selecionarData(bool inicial) async {
-  final dataSelecionada = await showDatePicker(
-    context: context,
-    initialDate: inicial ? dataInicial : dataFinal.subtract(
-      const Duration(days: 1),
-    ),
-    firstDate: DateTime(2020),
-    lastDate: DateTime.now(),
-    locale: const Locale('pt', 'BR'),
-  );
+  Future<void> selecionarData(bool inicial) async {
+    final dataSelecionada = await showDatePicker(
+      context: context,
+      initialDate: inicial
+          ? dataInicial
+          : dataFinal.subtract(
+              const Duration(days: 1),
+            ),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      locale: const Locale('pt', 'BR'),
+    );
 
-  if (dataSelecionada == null) return;
+    if (dataSelecionada == null) return;
 
-  setState(() {
-    if (inicial) {
-      dataInicial = DateTime(
-        dataSelecionada.year,
-        dataSelecionada.month,
-        dataSelecionada.day,
-      );
-    } else {
-      dataFinal = DateTime(
-        dataSelecionada.year,
-        dataSelecionada.month,
-        dataSelecionada.day,
-      ).add(const Duration(days: 1));
-    }
-  });
-}
+    setState(() {
+      if (inicial) {
+        dataInicial = DateTime(
+          dataSelecionada.year,
+          dataSelecionada.month,
+          dataSelecionada.day,
+        );
+      } else {
+        dataFinal = DateTime(
+          dataSelecionada.year,
+          dataSelecionada.month,
+          dataSelecionada.day,
+        ).add(const Duration(days: 1));
+      }
+    });
+  }
 
   // 4. listarAgendamentos()
-  
-Widget listarAgendamentos() {
-  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-    .collection('agendamentos')
-    .where(
-      'status',
-      whereIn: ['concluído', 'cancelado'],
-    )
-    .where(
-      'data',
-      isGreaterThanOrEqualTo: Timestamp.fromDate(dataInicial),
-    )
-    .where(
-      'data',
-      isLessThan: Timestamp.fromDate(dataFinal),
-    )
-    .orderBy('data', descending: true)
-    .limit(20)
-    .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
+  Widget listarAgendamentos() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('agendamentos')
+          .where(
+            'status',
+            whereIn: ['concluído', 'cancelado'],
+          )
+          .where(
+            'data',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(dataInicial),
+          )
+          .where(
+            'data',
+            isLessThan: Timestamp.fromDate(dataFinal),
+          )
+          .orderBy('data', descending: true)
+          .limit(20)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Erro ao carregar histórico:\n${snapshot.error}',
+            ),
+          );
+        }
+
+        final documentos = snapshot.data?.docs ?? [];
+
+        final atendimentosConcluidos = documentos.where((documento) {
+          return documento.data()['status'] == 'concluído';
+        }).toList();
+
+        final quantidadeAtendimentos = atendimentosConcluidos.length;
+
+        final valorTotal = atendimentosConcluidos.fold<double>(
+          0,
+          (total, documento) {
+            final dados = documento.data();
+            final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+
+            return total + valor;
+          },
         );
-      }
 
-      if (snapshot.hasError) {
-        return Center(
-          child: Text(
-            'Erro ao carregar histórico:\n${snapshot.error}',
-          ),
+        if (documentos.isEmpty) {
+          return const Center(
+            child: Text('Nenhum atendimento no histórico.'),
+          );
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Atendimentos'),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$quantidadeAtendimentos',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Valor total'),
+                            const SizedBox(height: 8),
+                            Text(
+                              'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: documentos.length,
+                itemBuilder: (context, index) {
+                  final dados = documentos[index].data();
+                  final timestamp = dados['data'] as Timestamp?;
+                  final dataHora = timestamp != null
+                      ? timestamp.toDate()
+                      : DateTime.now();
+
+                  final dataFormatada =
+                      '${dataHora.day.toString().padLeft(2, '0')}/'
+                      '${dataHora.month.toString().padLeft(2, '0')}/'
+                      '${dataHora.year}';
+
+                  final horario =
+                      '${dataHora.hour.toString().padLeft(2, '0')}:'
+                      '${dataHora.minute.toString().padLeft(2, '0')}';
+
+                  final servicos =
+                      (dados['servicos'] as List<dynamic>? ?? [])
+                          .map((servico) => servico['nome'] ?? 'Serviço')
+                          .join(', ');
+
+                  final status = dados['status'] ?? 'concluído';
+                  final isConcluido = status == 'concluído';
+                  final corStatus = isConcluido ? Colors.green : Colors.red;
+                  final valor =
+                      (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: corStatus,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: corStatus.withValues(alpha: 0.15),
+                        child: Icon(
+                          isConcluido ? Icons.check : Icons.close,
+                          color: corStatus,
+                        ),
+                      ),
+                      title: Text(
+                        (dados['clienteNome'] ?? 'Cliente sem nome').toString(),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text('$dataFormatada às $horario'),
+                          if (servicos.isNotEmpty) Text(servicos),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: corStatus.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status.toString().toUpperCase(),
+                              style: TextStyle(
+                                color: corStatus,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                      trailing: Text(
+                        'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         );
-      }
+      },
+    );
+  }
 
-      final documentos = snapshot.data?.docs ?? [];
+  // 5. construirFiltros()
+  Widget construirFiltros() {
+    String formatarData(DateTime data) {
+      return '${data.day.toString().padLeft(2, '0')}/'
+          '${data.month.toString().padLeft(2, '0')}/'
+          '${data.year}';
+    }
 
-      final atendimentosConcluidos = documentos.where((documento) {
-        return documento.data()['status'] == 'concluído';
-      }).toList();
-
-      final quantidadeAtendimentos = atendimentosConcluidos.length;
-
-      final valorTotal = atendimentosConcluidos.fold<double>(
-        0,
-        (total, documento) {
-          final dados = documento.data();
-          final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
-
-          return total + valor;
-        },
-      );
-
-      if (documentos.isEmpty) {
-        return const Center(
-          child: Text('Nenhum atendimento no histórico.'),
-        );
-      }
-      return Column(
-  children: [
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+    return Padding(
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Expanded(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Atendimentos'),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$quantidadeAtendimentos',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall,
-                    ),
-                  ],
-                ),
-              ),
+            child: OutlinedButton.icon(
+              onPressed: () => selecionarData(true),
+              icon: const Icon(Icons.calendar_month),
+              label: Text(formatarData(dataInicial)),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Valor total'),
-                    const SizedBox(height: 8),
-                    Text(
-                      'R\$ ${valorTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall,
-                    ),
-                  ],
+            child: OutlinedButton.icon(
+              onPressed: () => selecionarData(false),
+              icon: const Icon(Icons.event),
+              label: Text(
+                formatarData(
+                  dataFinal.subtract(const Duration(days: 1)),
                 ),
               ),
             ),
           ),
         ],
       ),
-    ),
-    Expanded(
-      child: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: documentos.length,
-        itemBuilder: (context, index) {
-          final dados = documentos[index].data();
-          final dataHora = (dados['data'] as Timestamp).toDate();
-
-          final dataFormatada =
-              '${dataHora.day.toString().padLeft(2, '0')}/'
-              '${dataHora.month.toString().padLeft(2, '0')}/'
-              '${dataHora.year}';
-
-          final horario =
-              '${dataHora.hour.toString().padLeft(2, '0')}:'
-              '${dataHora.minute.toString().padLeft(2, '0')}';
-
-          final servicos =
-              (dados['servicos'] as List<dynamic>? ?? [])
-                  .map((servico) => servico['nome'] ?? 'Serviço')
-                  .join(', ');
-
-          final status = dados['status'] ?? 'concluído';
-          final valor =
-              (dados['valorTotal'] as num?)?.toDouble() ?? 0;
-
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Icon(
-                  status == 'concluído'
-                      ? Icons.check
-                      : Icons.close,
-                ),
-              ),
-              title: Text(
-                (dados['clienteNome'] ?? 'Cliente sem nome')
-                    .toString(),
-              ),
-              subtitle: Text(
-                '$dataFormatada às $horario\n'
-                '$servicos\n'
-                'Status: ${status.toString().toUpperCase()}',
-              ),
-              isThreeLine: true,
-              trailing: Text(
-                'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
-              ),
-            ),
-          );
-        },
-      ),
-    ),
-  ],);
-    },
-  );
-}
-
-
-  // 5. construirFiltros()
-  Widget construirFiltros() {
-  String formatarData(DateTime data) {
-    return '${data.day.toString().padLeft(2, '0')}/'
-        '${data.month.toString().padLeft(2, '0')}/'
-        '${data.year}';
+    );
   }
 
-  return Padding(
-    padding: const EdgeInsets.all(12),
-    child: Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => selecionarData(true),
-            icon: const Icon(Icons.calendar_month),
-            label: Text(formatarData(dataInicial)),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => selecionarData(false),
-            icon: const Icon(Icons.event),
-            label: Text(
-              formatarData(
-                dataFinal.subtract(const Duration(days: 1)),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-  
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

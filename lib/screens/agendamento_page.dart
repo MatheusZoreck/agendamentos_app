@@ -820,4 +820,3 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   }
 }
 
-
