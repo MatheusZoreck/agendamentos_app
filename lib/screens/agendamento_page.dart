@@ -640,33 +640,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   }
 
   Future<void> adicionarFormaPagamento() async {
-    final controller = TextEditingController();
     final nome = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Adicionar forma de pagamento'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Nome',
-            hintText: 'Ex.: Pix, dinheiro ou cartão',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Adicionar'),
-          ),
-        ],
-      ),
+      builder: (context) => const _FormaPagamentoDialog(),
     );
-    controller.dispose();
 
     if (nome == null || nome.isEmpty) return;
 
@@ -1153,6 +1130,49 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FormaPagamentoDialog extends StatefulWidget {
+  const _FormaPagamentoDialog();
+
+  @override
+  State<_FormaPagamentoDialog> createState() => _FormaPagamentoDialogState();
+}
+
+class _FormaPagamentoDialogState extends State<_FormaPagamentoDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Adicionar forma de pagamento'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(
+          labelText: 'Nome',
+          hintText: 'Ex.: Pix, dinheiro ou cartão',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('Adicionar'),
+        ),
+      ],
     );
   }
 }
