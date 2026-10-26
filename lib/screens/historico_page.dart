@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'agendamento_page.dart';
 
 class HistoricoPage extends StatefulWidget {
   const HistoricoPage({super.key});
@@ -12,6 +13,121 @@ class _HistoricoPageState extends State<HistoricoPage> {
   // 1. Variáveis da classe
   late DateTime dataInicial;
   late DateTime dataFinal;
+
+  Future<void> excluirAgendamento(String documentoId) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir agendamento'),
+        content: const Text(
+          'Tem certeza de que deseja excluir este agendamento? '
+          'Essa ação não poderá ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Voltar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('agendamentos')
+          .doc(documentoId)
+          .delete();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agendamento excluído com sucesso!')),
+      );
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir agendamento: $erro')),
+      );
+    }
+  }
+
+  Future<void> cancelarAgendamento(
+    String documentoId,
+    String statusAtual,
+  ) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar agendamento'),
+        content: Text(
+          statusAtual == 'concluído'
+              ? 'Este atendimento já está concluído. Deseja realmente cancelá-lo?'
+              : 'Tem certeza de que deseja cancelar este agendamento?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Voltar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirmar cancelamento'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('agendamentos')
+          .doc(documentoId)
+          .update({'status': 'cancelado'});
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agendamento cancelado com sucesso!')),
+      );
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao cancelar agendamento: $erro')),
+      );
+    }
+  }
+
+  Future<void> retomarAgendamento(String documentoId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('agendamentos')
+          .doc(documentoId)
+          .update({'status': 'agendado'});
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agendamento retomado com sucesso!')),
+      );
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao retomar agendamento: $erro')),
+      );
+    }
+  }
 
   // 2. initState()
   @override
@@ -185,6 +301,8 @@ class _HistoricoPageState extends State<HistoricoPage> {
                       isConcluido && formaPagamento.trim().isEmpty;
                   final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
 
+                  final documentoId = documentos[index].id;
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 6),
                     shape: RoundedRectangleBorder(
@@ -246,12 +364,64 @@ class _HistoricoPageState extends State<HistoricoPage> {
                         ],
                       ),
                       isThreeLine: true,
-                      trailing: Text(
-                        'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            onSelected: (opcao) {
+                              if (opcao == 'editar') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => NovoAgendamentoScreen(
+                                      agendamentoId: documentoId,
+                                    ),
+                                  ),
+                                );
+                              } else if (opcao == 'retomar') {
+                                retomarAgendamento(documentoId);
+                              } else if (opcao == 'cancelar') {
+                                cancelarAgendamento(
+                                  documentoId,
+                                  status.toString(),
+                                );
+                              } else if (opcao == 'excluir') {
+                                excluirAgendamento(documentoId);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (status != 'cancelado')
+                                const PopupMenuItem<String>(
+                                  value: 'editar',
+                                  child: Text('Editar'),
+                                ),
+                              if (status == 'cancelado')
+                                const PopupMenuItem<String>(
+                                  value: 'retomar',
+                                  child: Text('Retomar'),
+                                ),
+                              if (status != 'cancelado')
+                                const PopupMenuItem<String>(
+                                  value: 'cancelar',
+                                  child: Text('Cancelar'),
+                                ),
+                              const PopupMenuItem<String>(
+                                value: 'excluir',
+                                child: Text(
+                                  'Excluir',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   );
