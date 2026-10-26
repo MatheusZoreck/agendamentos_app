@@ -747,7 +747,6 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    key: ValueKey(formaAtual),
                     initialValue: formaAtual,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
