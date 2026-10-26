@@ -26,11 +26,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
       hoje.day,
     ).subtract(const Duration(days: 7));
 
-    dataFinal = DateTime(
-      hoje.year,
-      hoje.month,
-      hoje.day,
-    );
+    dataFinal = DateTime(hoje.year, hoje.month, hoje.day);
   }
 
   // 3. selecionarData()
@@ -39,9 +35,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
       context: context,
       initialDate: inicial
           ? dataInicial
-          : dataFinal.subtract(
-              const Duration(days: 1),
-            ),
+          : dataFinal.subtract(const Duration(days: 1)),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       locale: const Locale('pt', 'BR'),
@@ -71,33 +65,23 @@ class _HistoricoPageState extends State<HistoricoPage> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('agendamentos')
-          .where(
-            'status',
-            whereIn: ['concluído', 'cancelado'],
-          )
+          .where('status', whereIn: ['concluído', 'cancelado'])
           .where(
             'data',
             isGreaterThanOrEqualTo: Timestamp.fromDate(dataInicial),
           )
-          .where(
-            'data',
-            isLessThan: Timestamp.fromDate(dataFinal),
-          )
+          .where('data', isLessThan: Timestamp.fromDate(dataFinal))
           .orderBy('data', descending: true)
           .limit(20)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
           return Center(
-            child: Text(
-              'Erro ao carregar histórico:\n${snapshot.error}',
-            ),
+            child: Text('Erro ao carregar histórico:\n${snapshot.error}'),
           );
         }
 
@@ -109,20 +93,18 @@ class _HistoricoPageState extends State<HistoricoPage> {
 
         final quantidadeAtendimentos = atendimentosConcluidos.length;
 
-        final valorTotal = atendimentosConcluidos.fold<double>(
-          0,
-          (total, documento) {
-            final dados = documento.data();
-            final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+        final valorTotal = atendimentosConcluidos.fold<double>(0, (
+          total,
+          documento,
+        ) {
+          final dados = documento.data();
+          final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
 
-            return total + valor;
-          },
-        );
+          return total + valor;
+        });
 
         if (documentos.isEmpty) {
-          return const Center(
-            child: Text('Nenhum atendimento no histórico.'),
-          );
+          return const Center(child: Text('Nenhum atendimento no histórico.'));
         }
 
         return Column(
@@ -190,24 +172,28 @@ class _HistoricoPageState extends State<HistoricoPage> {
                       '${dataHora.hour.toString().padLeft(2, '0')}:'
                       '${dataHora.minute.toString().padLeft(2, '0')}';
 
-                  final servicos =
-                      (dados['servicos'] as List<dynamic>? ?? [])
-                          .map((servico) => servico['nome'] ?? 'Serviço')
-                          .join(', ');
+                  final servicos = (dados['servicos'] as List<dynamic>? ?? [])
+                      .map((servico) => servico['nome'] ?? 'Serviço')
+                      .join(', ');
 
                   final status = dados['status'] ?? 'concluído';
                   final isConcluido = status == 'concluído';
                   final corStatus = isConcluido ? Colors.green : Colors.red;
-                  final valor =
-                      (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+                  final formaPagamento =
+                      dados['formaPagamento']?.toString() ?? '';
+                  final formaPagamentoPendente =
+                      isConcluido && formaPagamento.trim().isEmpty;
+                  final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
 
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: corStatus,
-                        width: 1.5,
+                        color: formaPagamentoPendente
+                            ? Colors.amber.shade800
+                            : corStatus,
+                        width: formaPagamentoPendente ? 2 : 1.5,
                       ),
                     ),
                     child: ListTile(
@@ -228,6 +214,16 @@ class _HistoricoPageState extends State<HistoricoPage> {
                           const SizedBox(height: 4),
                           Text('$dataFormatada às $horario'),
                           if (servicos.isNotEmpty) Text(servicos),
+                          if (formaPagamentoPendente)
+                            const Text(
+                              'Forma de pagamento pendente',
+                              style: TextStyle(
+                                color: Colors.amber,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          else if (formaPagamento.trim().isNotEmpty)
+                            Text('Pagamento: $formaPagamento'),
                           const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -293,9 +289,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
               onPressed: () => selecionarData(false),
               icon: const Icon(Icons.event),
               label: Text(
-                formatarData(
-                  dataFinal.subtract(const Duration(days: 1)),
-                ),
+                formatarData(dataFinal.subtract(const Duration(days: 1))),
               ),
             ),
           ),
@@ -307,15 +301,11 @@ class _HistoricoPageState extends State<HistoricoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Histórico de Agendamentos'),
-      ),
+      appBar: AppBar(title: const Text('Histórico de Agendamentos')),
       body: Column(
         children: [
           construirFiltros(),
-          Expanded(
-            child: listarAgendamentos(),
-          ),
+          Expanded(child: listarAgendamentos()),
         ],
       ),
     );

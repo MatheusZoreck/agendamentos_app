@@ -54,17 +54,13 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Agendamento excluído com sucesso!'),
-        ),
+        const SnackBar(content: Text('Agendamento excluído com sucesso!')),
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao excluir agendamento: $e'),
-        ),
+        SnackBar(content: Text('Erro ao excluir agendamento: $e')),
       );
     }
   }
@@ -105,24 +101,18 @@ class _HomeScreenState extends State<HomeScreen> {
       await FirebaseFirestore.instance
           .collection('agendamentos')
           .doc(documentoId)
-          .update({
-        'status': 'cancelado',
-      });
+          .update({'status': 'cancelado'});
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Agendamento cancelado com sucesso!'),
-        ),
+        const SnackBar(content: Text('Agendamento cancelado com sucesso!')),
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao cancelar agendamento: $e'),
-        ),
+        SnackBar(content: Text('Erro ao cancelar agendamento: $e')),
       );
     }
   }
@@ -133,12 +123,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     verificarAgendamentos();
 
-    _timerVerificacao = Timer.periodic(
-      const Duration(minutes: 1),
-      (timer) {
-        verificarAgendamentos();
-      },
-    );
+    _timerVerificacao = Timer.periodic(const Duration(minutes: 1), (timer) {
+      verificarAgendamentos();
+    });
   }
 
   @override
@@ -188,19 +175,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final inicioHoje = DateTime(agora.year, agora.month, agora.day);
     final inicioAmanha = inicioHoje.add(const Duration(days: 1));
 
-    Query<Map<String, dynamic>> consulta =
-        FirebaseFirestore.instance.collection('agendamentos');
+    Query<Map<String, dynamic>> consulta = FirebaseFirestore.instance
+        .collection('agendamentos');
 
     if (filtroAgendamentos == 'Hoje') {
       consulta = consulta
-          .where(
-            'data',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(inicioHoje),
-          )
-          .where(
-            'data',
-            isLessThan: Timestamp.fromDate(inicioAmanha),
-          );
+          .where('data', isGreaterThanOrEqualTo: Timestamp.fromDate(inicioHoje))
+          .where('data', isLessThan: Timestamp.fromDate(inicioAmanha));
     } else {
       // Próximos
       consulta = consulta.where(
@@ -217,9 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
       stream: _obterStreamAgendamentos(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
@@ -251,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final corStatus = status == 'concluído'
                 ? Colors.green
                 : status == 'cancelado'
-                    ? Colors.red
-                    : Colors.blue;
+                ? Colors.red
+                : Colors.blue;
 
             final timestamp = dados['data'] as Timestamp?;
             final dataHora = timestamp?.toDate() ?? DateTime.now();
@@ -270,16 +249,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 .map((servico) => servico['nome'] ?? 'Serviço')
                 .join(', ');
 
-            final valor =
-                (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+            final valor = (dados['valorTotal'] as num?)?.toDouble() ?? 0;
+            final formaPagamento = dados['formaPagamento']?.toString() ?? '';
+            final formaPagamentoPendente =
+                status == 'concluído' && formaPagamento.trim().isEmpty;
 
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                leading: CircleAvatar(
-                  radius: 24,
-                  child: Text(horario),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: formaPagamentoPendente
+                      ? Colors.amber.shade800
+                      : Colors.transparent,
+                  width: formaPagamentoPendente ? 2 : 0,
                 ),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(radius: 24, child: Text(horario)),
                 title: Text(
                   (dados['clienteNome'] ?? 'Cliente sem nome').toString(),
                 ),
@@ -287,6 +274,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('$dataFormatada\n$servicos'),
+                    if (formaPagamentoPendente)
+                      const Text(
+                        'Forma de pagamento pendente',
+                        style: TextStyle(
+                          color: Colors.amber,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else if (formaPagamento.trim().isNotEmpty)
+                      Text('Pagamento: $formaPagamento'),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -338,15 +335,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             await FirebaseFirestore.instance
                                 .collection('agendamentos')
                                 .doc(documentoId)
-                                .update({
-                              'status': 'agendado',
-                            });
+                                .update({'status': 'agendado'});
 
                             if (!context.mounted) return;
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Agendamento retomado com sucesso!'),
+                                content: Text(
+                                  'Agendamento retomado com sucesso!',
+                                ),
                               ),
                             );
                           } catch (e) {
@@ -354,7 +351,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Erro ao retomar agendamento: $e'),
+                                content: Text(
+                                  'Erro ao retomar agendamento: $e',
+                                ),
                               ),
                             );
                           }
@@ -405,9 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text(
           'Agendamentos',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       drawer: Drawer(
@@ -416,18 +413,12 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFFD7B9A9),
-              ),
+              decoration: const BoxDecoration(color: Color(0xFFD7B9A9)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: const [
-                  Icon(
-                    Icons.spa_outlined,
-                    size: 36,
-                    color: Color(0xFF6F554B),
-                  ),
+                  Icon(Icons.spa_outlined, size: 36, color: Color(0xFF6F554B)),
                   SizedBox(height: 10),
                   Text(
                     'Agendamentos',
@@ -439,10 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     'Menu principal',
-                    style: TextStyle(
-                      color: Color(0xFF6F554B),
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Color(0xFF6F554B), fontSize: 13),
                   ),
                 ],
               ),
@@ -451,7 +439,9 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.home_outlined),
               title: const Text('Home'),
               onTap: () {
-                Navigator.pop(context); // Apenas fecha o Drawer, pois já está na Home
+                Navigator.pop(
+                  context,
+                ); // Apenas fecha o Drawer, pois já está na Home
               },
             ),
             ListTile(
@@ -461,9 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const ClientePage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const ClientePage()),
                 );
               },
             ),
@@ -474,9 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const ServicoPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const ServicoPage()),
                 );
               },
             ),
@@ -544,9 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          Expanded(
-            child: _listaAgendamentos(),
-          ),
+          Expanded(child: _listaAgendamentos()),
           Padding(
             padding: const EdgeInsets.all(16),
             child: SizedBox(
@@ -570,4 +554,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

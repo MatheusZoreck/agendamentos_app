@@ -14,6 +14,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
   final Set<String> servicosSelecionados = {};
   String? clienteSelecionadoId;
+  String? formaPagamentoSelecionada;
   DateTime? dataSelecionada;
   TimeOfDay? horarioSelecionado;
   bool salvandoAgendamento = false;
@@ -38,9 +39,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
       if (!documento.exists || documento.data() == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Agendamento não encontrado.'),
-          ),
+          const SnackBar(content: Text('Agendamento não encontrado.')),
         );
         Navigator.of(context).pop();
         return;
@@ -59,6 +58,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
       setState(() {
         clienteSelecionadoId = dados['clienteId'] as String?;
+        formaPagamentoSelecionada = dados['formaPagamento']?.toString();
 
         servicosSelecionados
           ..clear()
@@ -68,11 +68,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                 .where((id) => id.isNotEmpty),
           );
 
-        dataSelecionada = DateTime(
-          dataHora.year,
-          dataHora.month,
-          dataHora.day,
-        );
+        dataSelecionada = DateTime(dataHora.year, dataHora.month, dataHora.day);
 
         horarioSelecionado = TimeOfDay(
           hour: dataHora.hour,
@@ -83,9 +79,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
       debugPrint('Erro ao carregar agendamento: $erro');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao carregar agendamento: $erro'),
-          ),
+          SnackBar(content: Text('Erro ao carregar agendamento: $erro')),
         );
         Navigator.of(context).pop();
       }
@@ -100,28 +94,20 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
   Widget etapaSelecionarCliente() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('clientes')
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('clientes').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return const Center(
-            child: Text('Erro ao carregar clientes.'),
-          );
+          return const Center(child: Text('Erro ao carregar clientes.'));
         }
 
         final clientes = snapshot.data?.docs ?? [];
 
         if (clientes.isEmpty) {
-          return const Center(
-            child: Text('Nenhum cliente cadastrado.'),
-          );
+          return const Center(child: Text('Nenhum cliente cadastrado.'));
         }
 
         return RadioGroup<String>(
@@ -170,28 +156,20 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
 
   Widget etapaSelecionarServicos() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('servicos')
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('servicos').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return const Center(
-            child: Text('Erro ao carregar os serviços.'),
-          );
+          return const Center(child: Text('Erro ao carregar os serviços.'));
         }
 
         final documentos = snapshot.data?.docs ?? [];
 
         if (documentos.isEmpty) {
-          return const Center(
-            child: Text('Nenhum serviço cadastrado.'),
-          );
+          return const Center(child: Text('Nenhum serviço cadastrado.'));
         }
 
         return ListView(
@@ -214,10 +192,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               subtitle: Text(
                 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}'
                 ' • $tempo min',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF5A4940),
-                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF5A4940)),
               ),
               onChanged: (marcado) {
                 setState(() {
@@ -283,8 +258,8 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
             dataSelecionada == null
                 ? 'Selecionar data'
                 : '${dataSelecionada!.day.toString().padLeft(2, '0')}/'
-                  '${dataSelecionada!.month.toString().padLeft(2, '0')}/'
-                  '${dataSelecionada!.year}',
+                      '${dataSelecionada!.month.toString().padLeft(2, '0')}/'
+                      '${dataSelecionada!.year}',
             style: const TextStyle(fontSize: 16),
           ),
         ),
@@ -344,15 +319,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
         }
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('servicos')
-              .snapshots(),
+          stream: FirebaseFirestore.instance.collection('servicos').snapshots(),
           builder: (context, servicosSnapshot) {
-            if (servicosSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+            if (servicosSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (servicosSnapshot.hasError) {
@@ -385,11 +355,9 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
             for (final documento in selecionados) {
               final dados = documento.data();
 
-              valorTotal +=
-                  (dados['valor'] as num?)?.toDouble() ?? 0;
+              valorTotal += (dados['valor'] as num?)?.toDouble() ?? 0;
 
-              tempoTotal +=
-                  (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+              tempoTotal += (dados['tempoMedio'] as num?)?.toInt() ?? 0;
             }
 
             final data = dataSelecionada;
@@ -467,16 +435,16 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                 const SizedBox(height: 8),
                 ...selecionados.map((documento) {
                   final dados = documento.data();
-                  final nome =
-                      (dados['nome'] ?? 'Serviço').toString();
-                  final valor =
-                      (dados['valor'] as num?)?.toDouble() ?? 0;
-                  final tempo =
-                      (dados['tempoMedio'] as num?)?.toInt() ?? 0;
+                  final nome = (dados['nome'] ?? 'Serviço').toString();
+                  final valor = (dados['valor'] as num?)?.toDouble() ?? 0;
+                  final tempo = (dados['tempoMedio'] as num?)?.toInt() ?? 0;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(10),
@@ -521,6 +489,8 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                     ),
                   );
                 }),
+                const SizedBox(height: 16),
+                seletorFormaPagamento(),
                 const Divider(height: 28),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -536,7 +506,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.payments_outlined, color: Colors.green, size: 24),
+                              Icon(
+                                Icons.payments_outlined,
+                                color: Colors.green,
+                                size: 24,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Valor total',
@@ -564,7 +538,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.timelapse, color: Color(0xFF6F4E37), size: 22),
+                              Icon(
+                                Icons.timelapse,
+                                color: Color(0xFF6F4E37),
+                                size: 22,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Tempo estimado',
@@ -592,7 +570,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.calendar_month, color: Color(0xFF6F4E37), size: 22),
+                              Icon(
+                                Icons.calendar_month,
+                                color: Color(0xFF6F4E37),
+                                size: 22,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Data',
@@ -620,7 +602,11 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.access_time, color: Color(0xFF6F4E37), size: 22),
+                              Icon(
+                                Icons.access_time,
+                                color: Color(0xFF6F4E37),
+                                size: 22,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Horário',
@@ -653,13 +639,155 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
     );
   }
 
-  Future<bool> verificarConflito(
-    DateTime novaData,
-    int novoTempo,
-  ) async {
-    final novaDataFinal = novaData.add(
-      Duration(minutes: novoTempo),
+  Future<void> adicionarFormaPagamento() async {
+    final controller = TextEditingController();
+    final nome = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adicionar forma de pagamento'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Nome',
+            hintText: 'Ex.: Pix, dinheiro ou cartão',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Adicionar'),
+          ),
+        ],
+      ),
     );
+    controller.dispose();
+
+    if (nome == null || nome.isEmpty) return;
+
+    try {
+      final formasPagamento = FirebaseFirestore.instance.collection(
+        'formasPagamento',
+      );
+      final existentes = await formasPagamento.get();
+      QueryDocumentSnapshot<Map<String, dynamic>>? formaExistente;
+      for (final documento in existentes.docs) {
+        final nomeExistente = (documento.data()['nome'] ?? '')
+            .toString()
+            .trim();
+        if (nomeExistente.toLowerCase() == nome.toLowerCase()) {
+          formaExistente = documento;
+          break;
+        }
+      }
+
+      final nomeSalvo = formaExistente == null
+          ? nome
+          : (formaExistente.data()['nome'] ?? nome).toString();
+
+      if (formaExistente == null) {
+        await formasPagamento.add({'nome': nome});
+      }
+
+      if (mounted) {
+        setState(() {
+          formaPagamentoSelecionada = nomeSalvo;
+        });
+      }
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao adicionar forma de pagamento: $erro')),
+      );
+    }
+  }
+
+  Widget seletorFormaPagamento() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Forma de pagamento (opcional)',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2C2420),
+          ),
+        ),
+        const SizedBox(height: 8),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('formasPagamento')
+              .orderBy('nome')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text(
+                'Erro ao carregar formas de pagamento: ${snapshot.error}',
+              );
+            }
+
+            final nomes = (snapshot.data?.docs ?? [])
+                .map((documento) => documento.data()['nome']?.toString() ?? '')
+                .where((nome) => nome.isNotEmpty)
+                .toSet()
+                .toList();
+
+            final formaAtual = formaPagamentoSelecionada;
+            if (formaAtual != null && !nomes.contains(formaAtual)) {
+              nomes.add(formaAtual);
+            }
+
+            return Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey(formaAtual),
+                    initialValue: formaAtual,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Selecione uma forma',
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Não informada'),
+                      ),
+                      ...nomes.map(
+                        (nome) => DropdownMenuItem<String>(
+                          value: nome,
+                          child: Text(nome),
+                        ),
+                      ),
+                    ],
+                    onChanged: (forma) {
+                      setState(() {
+                        formaPagamentoSelecionada = forma;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: adicionarFormaPagamento,
+                  tooltip: 'Adicionar forma de pagamento',
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<bool> verificarConflito(DateTime novaData, int novoTempo) async {
+    final novaDataFinal = novaData.add(Duration(minutes: novoTempo));
 
     final inicioDia = DateTime(novaData.year, novaData.month, novaData.day);
     final fimDia = inicioDia.add(const Duration(days: 1));
@@ -690,8 +818,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
       }
 
       final inicioExistente = timestamp.toDate();
-      final tempoExistente =
-          (dados['tempoTotal'] as num?)?.toInt() ?? 0;
+      final tempoExistente = (dados['tempoTotal'] as num?)?.toInt() ?? 0;
 
       final fimExistente = inicioExistente.add(
         Duration(minutes: tempoExistente),
@@ -814,10 +941,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
         horarioSelecionado!.minute,
       );
 
-      final temConflito = await verificarConflito(
-        dataHora,
-        tempoTotal,
-      );
+      final temConflito = await verificarConflito(dataHora, tempoTotal);
 
       if (temConflito) {
         if (!mounted) return;
@@ -840,6 +964,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
         'clienteId': clienteSelecionadoId,
         'clienteNome': cliente['nome'] ?? '',
         'servicos': listaServicos,
+        'formaPagamento': formaPagamentoSelecionada,
         'valorTotal': valorTotal,
         'tempoTotal': tempoTotal,
         'data': Timestamp.fromDate(dataHora),
@@ -877,11 +1002,9 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao salvar agendamento: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao salvar agendamento: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -894,18 +1017,14 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   void avancarEtapa() {
     if (etapaAtual == 0 && clienteSelecionadoId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione um cliente para continuar.'),
-        ),
+        const SnackBar(content: Text('Selecione um cliente para continuar.')),
       );
       return;
     }
 
     if (etapaAtual == 1 && servicosSelecionados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione pelo menos um serviço.'),
-        ),
+        const SnackBar(content: Text('Selecione pelo menos um serviço.')),
       );
       return;
     }
@@ -913,9 +1032,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
     if (etapaAtual == 2 &&
         (dataSelecionada == null || horarioSelecionado == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione a data e o horário.'),
-        ),
+        const SnackBar(content: Text('Selecione a data e o horário.')),
       );
       return;
     }
@@ -938,11 +1055,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
   @override
   Widget build(BuildContext context) {
     if (carregandoAgendamento) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return PopScope(
@@ -973,7 +1086,9 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
               LinearProgressIndicator(
                 value: (etapaAtual + 1) / 4,
                 backgroundColor: const Color(0xFFE2D5CC),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5E4D)),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF8B5E4D),
+                ),
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -998,10 +1113,10 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                 child: etapaAtual == 0
                     ? etapaSelecionarCliente()
                     : etapaAtual == 1
-                        ? etapaSelecionarServicos()
-                        : etapaAtual == 2
-                            ? etapaSelecionarDataHorario()
-                            : etapaConfirmarAgendamento(),
+                    ? etapaSelecionarServicos()
+                    : etapaAtual == 2
+                    ? etapaSelecionarDataHorario()
+                    : etapaConfirmarAgendamento(),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1019,8 +1134,8 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                       onPressed: salvandoAgendamento
                           ? null
                           : etapaAtual == 3
-                              ? salvarAgendamento
-                              : avancarEtapa,
+                          ? salvarAgendamento
+                          : avancarEtapa,
                       child: salvandoAgendamento
                           ? const SizedBox(
                               height: 20,
@@ -1030,9 +1145,7 @@ class _NovoAgendamentoScreenState extends State<NovoAgendamentoScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(
-                              etapaAtual == 3 ? 'Finalizar' : 'Continuar',
-                            ),
+                          : Text(etapaAtual == 3 ? 'Finalizar' : 'Continuar'),
                     ),
                   ),
                 ],
