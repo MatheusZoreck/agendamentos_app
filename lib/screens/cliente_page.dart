@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
 
 class ClientePage extends StatefulWidget {
   const ClientePage({super.key});
@@ -13,6 +14,43 @@ class _ClientePageState extends State<ClientePage> {
   final nomeController = TextEditingController();
   final apelidoController = TextEditingController();
   final telefoneController = TextEditingController();
+  final contatoPicker = FlutterNativeContactPicker();
+
+  Future<void> selecionarContato() async {
+    try {
+      final contato = await contatoPicker.selectPhoneNumber();
+      if (!mounted || contato == null) return;
+
+      final nome = contato.fullName?.trim() ?? '';
+      if (nome.isNotEmpty) {
+        nomeController.text = nome;
+      }
+
+      final telefone =
+          contato.selectedPhoneNumber ??
+          (contato.phoneNumbers?.isNotEmpty == true
+              ? contato.phoneNumbers!.first
+              : '');
+
+      if (telefone.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('O contato selecionado não possui telefone.'),
+          ),
+        );
+        return;
+      }
+
+      telefoneController.text = formatarTelefoneContato(telefone);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível selecionar o contato: $e'),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -52,6 +90,12 @@ class _ClientePageState extends State<ClientePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: selecionarContato,
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: const Text('Importar dos contatos'),
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nomeController,
                   decoration: const InputDecoration(
@@ -320,6 +364,12 @@ class _ClientePageState extends State<ClientePage> {
                         ),
                       ),
                       const SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        onPressed: selecionarContato,
+                        icon: const Icon(Icons.contacts_outlined),
+                        label: const Text('Importar dos contatos'),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: nomeController,
                         decoration: const InputDecoration(
@@ -434,6 +484,27 @@ class _ClientePageState extends State<ClientePage> {
       ),
     );
   }
+}
+
+String formatarTelefoneContato(String telefone) {
+  var digitos = telefone.replaceAll(RegExp(r'\D'), '');
+
+  if ((digitos.length == 12 || digitos.length == 13) &&
+      digitos.startsWith('55')) {
+    digitos = digitos.substring(2);
+  }
+
+  if (digitos.length == 11) {
+    return '(${digitos.substring(0, 2)}) '
+        '${digitos.substring(2, 7)}-${digitos.substring(7)}';
+  }
+
+  if (digitos.length == 10) {
+    return '(${digitos.substring(0, 2)}) '
+        '${digitos.substring(2, 6)}-${digitos.substring(6)}';
+  }
+
+  return telefone;
 }
 
 class TelefoneInputFormatter extends TextInputFormatter {
